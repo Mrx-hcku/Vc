@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
   <title>Daily.co Video Call App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,37 +19,20 @@
     #timer { margin-top:10px; }
   </style>
 </head>
-<body>
-
-  <h2>Login</h2>
+<body>  <h2>Login</h2>
   <input id="myUsername" placeholder="Enter your username">
-  <button onclick="registerUser()">Go Online</button>
-
-  <div id="incoming">
+  <button onclick="registerUser()">Go Online</button>  <div id="incoming">
     <p id="callerName"></p>
     <button onclick="acceptCall()">Accept</button>
     <button onclick="rejectCall()">Reject</button>
-  </div>
-
-  <div id="appArea" style="display:none;">
+  </div>  <div id="appArea" style="display:none;">
     <hr><h3>Your Chat List</h3><ul id="userList"></ul>
     <hr><h3>Search Users</h3><input id="searchInput" placeholder="Search username..."><ul id="searchResults"></ul>
-  </div>
-
-  <div id="video-area">
+  </div>  <div id="video-area">
     <div id="video-container"></div>
     <button id="endBtn" onclick="endCall()">End Call</button>
     <div id="timer">Call time: <span id="timeDisplay">00:00</span></div>
-  </div>
-
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <!-- Daily -->
-  <script src="https://unpkg.com/@daily-co/daily-js"></script>
-
-  <script>
-  const DAILY_API_KEY = 'decfcf8378aabf7d69e10225d17c5e986bde0dfceadab6875f1fe9bebc79baec';
+  </div>  <!-- Firebase -->  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>  <!-- Daily -->  <script src="https://unpkg.com/@daily-co/daily-js"></script>  <script>
   const firebaseConfig = {
     apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
     authDomain: "vcall-5f220.firebaseapp.com",
@@ -91,7 +73,7 @@
   }
 
   function callUser(user){
-    const id = 'call-'+myUsername+'-'+user+'-'+Date.now();
+    const id = 'fixed-room';
     db.ref("calls/"+user).set({ from:myUsername, id, status:'ringing' });
     db.ref("chatlist/"+myUsername+'/'+user).set(true);
     db.ref("chatlist/"+user+'/'+myUsername).set(true);
@@ -111,7 +93,7 @@
     document.getElementById("incoming").style.display='none';
     const container=document.getElementById("video-container");
     callFrame = DailyIframe.createFrame(container, { showLeaveButton:false });
-    callFrame.join({ url:`https://demo.daily.co/${callId}`, apiKey:DAILY_API_KEY })
+    callFrame.join({ url:`https://vcoo.daily.co/1UjEgVl4BrhmJquutHki` })
       .then(()=>{
         startTime = Date.now();
         timerInterval=setInterval(updateTimer, 1000);
@@ -176,6 +158,5 @@
       });
     });
   };
-  </script>
-</body>
+  </script></body>
 </html>
