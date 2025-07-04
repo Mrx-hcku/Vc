@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video Call WebApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background: #121212;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px 0;
+      width: 90%;
+      max-width: 300px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #0a84ff;
+      color: white;
+      cursor: pointer;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      background-color: #1f1f1f;
+      margin-bottom: 8px;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 5px;
+    }
+    .online {
+      background: lime;
+    }
+    .offline {
+      background: red;
+    }
+    #incoming {
+      display: none;
+      margin-top: 20px;
+      background-color: #1f1f1f;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    #video-call {
+      margin-top: 20px;
+      width: 100%;
+      height: 80vh;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Login</h2>
+  <input type="text" id="myUsername" placeholder="Enter your username">
+  <button onclick="registerUser()">Go Online</button>
+
+  <div id="incoming">
+    <p id="callerName"></p>
+    <button onclick="acceptCall()">Accept</button>
+    <button onclick="rejectCall()">Reject</button>
+  </div>
+
+  <div id="appArea" style="display:none;">
+    <hr>
+    <h3>Your Chat List</h3>
+    <ul id="userList"></ul>
+
+    <hr>
+    <h3>Search Users</h3>
+    <input type="text" id="searchInput" placeholder="Search username...">
+    <ul id="searchResults"></ul>
+  </div>
+
+  <div id="video-call"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <!-- Jitsi SDK -->
+  <script src="https://meet.jit.si/external_api.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
+      authDomain: "vcall-5f220.firebaseapp.com",
+      databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
+      projectId: "vcall-5f220",
+      storageBucket: "vcall-5f220.firebasestorage.app",
+      messagingSenderId: "679349443110",
+      appId: "1:679349443110:web:b44818bb14dffafcec24e7",
+      measurementId: "G-JYP2LTE9FV"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let myUsername = "";
+    let callRoom = "";
+
+    function registerUser() {
+      myUsername = document.getElementById("myUsername").value.trim();
+      if (!myUsername) return alert("Enter username!");
+
+      db.ref("users/" + myUsername).set({ online: true });
+      db.ref("users/" + myUsername).onDisconnect().remove();
+
+      document.getElementById("appArea").style.display = "block";
+      document.getElementById("myUsername").disabled = true;
+
+      listenForIncoming();
+      showChatList();
+    }
+
+    function listenForIncoming() {
+      db.ref("calls/" + myUsername).on("value", snapshot => {
+        const data = snapshot.val();
+        if (data && data.status === "ringing") {
+          document.getElementById("incoming").style.display = "block";
+          document.getElementById("callerName").innerText = "Incoming call from " + data.caller;
+          callRoom = data.room;
+        }
+      });
+    }
+
+    function acceptCall() {
+      db.ref("calls/" + myUsername).set({ status: "accepted" });
+      document.getElementById("incoming").style.display = "none";
+      openJitsiRoom(callRoom);
+    }
+
+    function rejectCall() {
+      db.ref("calls/" + myUsername).remove();
+      document.getElementById("incoming").style.display = "none";
+    }
+
+    function callUser(targetUser) {
+      const from = myUsername;
+      const to = targetUser;
+      callRoom = "call-" + from + "-" + to;
+
+      db.ref("calls/" + to).set({
+        caller: from,
+        room: callRoom,
+        status: "ringing"
+      });
+
+      db.ref("chatlist/" + from + "/" + to).set(true);
+      db.ref("chatlist/" + to + "/" + from).set(true);
+
+      openJitsiRoom(callRoom);
+    }
+
+    function openJitsiRoom(roomName) {
+      document.getElementById("video-call").innerHTML = "";
+
+      const domain = "meet.jit.si";
+      const options = {
+        roomName: roomName,
+        width: "100%",
+        height: 600,
+        parentNode: document.getElementById('video-call'),
+        configOverwrite: { startWithAudioMuted: false, startWithVideoMuted: false }
+      };
+
+      const api = new JitsiMeetExternalAPI(domain, options);
+
+      const endBtn = document.createElement("button");
+      endBtn.innerText = "End Call";
+      endBtn.style.marginTop = "10px";
+      endBtn.onclick = () => {
+        api.executeCommand('hangup');
+        db.ref("calls/" + myUsername).remove();
+        location.reload();
+      };
+      document.getElementById("video-call").appendChild(endBtn);
+    }
+
+    function showChatList() {
+      const userList = document.getElementById("userList");
+      userList.innerHTML = "";
+
+      db.ref("chatlist/" + myUsername).on("value", chatSnap => {
+        const chats = chatSnap.val();
+        if (!chats) return;
+
+        Object.keys(chats).forEach(contact => {
+          db.ref("users/" + contact).once("value", snap => {
+            const isOnline = snap.exists();
+
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <div class="user-info">
+                <img class="avatar" src="https://ui-avatars.com/api/?name=${contact}&background=random">
+                <strong>${contact}</strong>
+                <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+              </div>
+              <button onclick="callUser('${contact}')">Call</button>
+            `;
+            userList.appendChild(li);
+          });
+        });
+      });
+    }
+
+    document.getElementById("searchInput").addEventListener("input", function () {
+      const query = this.value.trim().toLowerCase();
+      const resultsList = document.getElementById("searchResults");
+      resultsList.innerHTML = "";
+
+      if (query.length === 0) return;
+
+      db.ref("users").once("value", snapshot => {
+        const users = snapshot.val();
+        for (let user in users) {
+          if (user.toLowerCase().includes(query) && user !== myUsername) {
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <div class="user-info">
+                <img class="avatar" src="https://ui-avatars.com/api/?name=${user}&background=random">
+                <strong>${user}</strong>
+                <span class="status-dot online"></span>
+              </div>
+              <button onclick="callUser('${user}')">Call</button>
+            `;
+            resultsList.appendChild(li);
+          }
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
