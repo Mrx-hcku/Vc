@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>Video Call</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       background: #121212;
@@ -12,31 +12,29 @@
       padding: 16px;
     }
 
-    h2 {
+    h2, h3 {
       text-align: center;
     }
 
-    #incoming {
+    .hidden {
       display: none;
-      background: #1f1f1f;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 8px;
-      text-align: center;
     }
 
-    button {
+    input, button {
       padding: 12px;
-      margin: 10px auto;
+      margin: 8px auto;
       width: 90%;
       max-width: 300px;
       border: none;
       border-radius: 8px;
-      font-weight: bold;
       font-size: 16px;
-      color: white;
-      background: #0a84ff;
       display: block;
+    }
+
+    button {
+      background: #0a84ff;
+      color: white;
+      font-weight: bold;
     }
 
     ul {
@@ -67,37 +65,55 @@
       border-radius: 10px;
       margin-top: 12px;
     }
+
+    #incoming {
+      background: #1f1f1f;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
-  <h2 id="title">Video Call</h2>
-
-  <div id="incoming">
-    <p id="callFrom"></p>
-    <button onclick="acceptCall()">Accept</button>
-    <button onclick="rejectCall()">Reject</button>
+  <!-- Login UI -->
+  <div id="loginView">
+    <h2>Login to Video Call</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Sign Up</button>
+    <p id="authMsg" style="text-align:center;color:red;"></p>
   </div>
 
-  <h3>Online Users</h3>
-  <ul id="users"></ul>
+  <!-- Call UI -->
+  <div id="callView" class="hidden">
+    <h2 id="title">Video Call</h2>
 
-  <video id="remoteVideo" autoplay playsinline></video>
-  <video id="localVideo" autoplay playsinline muted></video>
-  <button id="endBtn" onclick="endCall()" style="display:none;">End Call</button>
+    <div id="incoming" class="hidden">
+      <p id="callFrom"></p>
+      <button onclick="acceptCall()">Accept</button>
+      <button onclick="rejectCall()">Reject</button>
+    </div>
 
-  <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
+    <h3>Online Users</h3>
+    <ul id="users"></ul>
 
-  <!-- Firebase and PeerJS -->
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay playsinline muted></video>
+    <button id="endBtn" onclick="endCall()" style="display:none;">End Call</button>
+
+    <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
+  </div>
+
+  <!-- Firebase + PeerJS -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    const username = params.get("username") || "Guest" + Math.floor(Math.random() * 1000);
-    document.getElementById("title").innerText = `Welcome, ${username}`;
-
     const firebaseConfig = {
       apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
       authDomain: "vcall-5f220.firebaseapp.com",
@@ -110,34 +126,64 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
     const ringtone = document.getElementById("ringtone");
+
+    let username = "";
     let peer = null, currentCall = null, localStream = null;
 
-    peer = new Peer(username, {
-      host: '0.peerjs.com',
-      port: 443,
-      secure: true
-    });
-
-    peer.on('open', () => {
-      db.ref("users/" + username).set(true);
-      db.ref("users/" + username).onDisconnect().remove();
-      loadOnlineUsers();
-
-      db.ref("calls/" + username).on('value', snap => {
-        if (snap.exists()) {
-          const caller = snap.val().from;
-          document.getElementById("callFrom").innerHTML = `
-            <img src="https://ui-avatars.com/api/?name=${caller}" class="avatar"> Call from <b>${caller}</b>`;
-          document.getElementById("incoming").style.display = "block";
-          ringtone.play().catch(() => {});
-        }
+    function login() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, pass).then(user => {
+        startApp(user.user);
+      }).catch(err => {
+        document.getElementById("authMsg").innerText = err.message;
       });
-    });
+    }
 
-    peer.on('call', call => {
-      window.pendingCall = call;
-    });
+    function signup() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email, pass).then(user => {
+        startApp(user.user);
+      }).catch(err => {
+        document.getElementById("authMsg").innerText = err.message;
+      });
+    }
+
+    function startApp(user) {
+      document.getElementById("loginView").classList.add("hidden");
+      document.getElementById("callView").classList.remove("hidden");
+      username = user.email.split('@')[0];
+      document.getElementById("title").innerText = `Welcome, ${username}`;
+
+      peer = new Peer(username, {
+        host: '0.peerjs.com',
+        port: 443,
+        secure: true
+      });
+
+      peer.on('open', () => {
+        db.ref("users/" + username).set(true);
+        db.ref("users/" + username).onDisconnect().remove();
+        loadOnlineUsers();
+
+        db.ref("calls/" + username).on('value', snap => {
+          if (snap.exists()) {
+            const caller = snap.val().from;
+            document.getElementById("callFrom").innerHTML =
+              `<img src="https://ui-avatars.com/api/?name=${caller}" class="avatar"> Call from <b>${caller}</b>`;
+            document.getElementById("incoming").classList.remove("hidden");
+            ringtone.play().catch(() => {});
+          }
+        });
+      });
+
+      peer.on('call', call => {
+        window.pendingCall = call;
+      });
+    }
 
     function loadOnlineUsers() {
       db.ref("users").on("value", snap => {
@@ -192,7 +238,7 @@
           showVideo(remote, 'remoteVideo');
         });
         currentCall = window.pendingCall;
-        document.getElementById("incoming").style.display = "none";
+        document.getElementById("incoming").classList.add("hidden");
         document.getElementById("endBtn").style.display = "block";
         db.ref("calls/" + username).remove();
       });
@@ -201,7 +247,7 @@
     function rejectCall() {
       ringtone.pause();
       ringtone.currentTime = 0;
-      document.getElementById("incoming").style.display = "none";
+      document.getElementById("incoming").classList.add("hidden");
       db.ref("calls/" + username).remove();
     }
 
@@ -225,14 +271,10 @@
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: false,
-          sampleRate: 48000,
-          channelCount: 1,
-          latency: 0,
-          volume: 1.0
+          autoGainControl: false
         }
       });
     }
   </script>
 </body>
-</html>
+  </html>
