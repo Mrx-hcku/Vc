@@ -1,162 +1,125 @@
 <!DOCTYPE html><html>
 <head>
-  <title>Daily.co Video Call App</title>
+  <title>PeerJS Video Call with Firebase</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { background: #121212; color: white; font-family: Arial; padding:20px; }
-    input, button { width: 90%; max-width: 300px; margin:10px 0; padding:10px; border:none; border-radius:5px; font-size:16px; }
-    button { background: #0a84ff; color:white; cursor:pointer; }
+    body { background:#111; color:#fff; font-family:sans-serif; padding:20px; }
+    input, button { width:90%; max-width:300px; margin:10px 0; padding:10px; border-radius:5px; border:none; }
+    button { background:#0a84ff; color:white; font-size:16px; cursor:pointer; }
     ul { list-style:none; padding:0; }
-    li { background:#1f1f1f; margin:8px 0; padding:10px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; }
-    .user-info { display:flex; align-items:center; }
+    li { background:#222; margin:8px 0; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
+    .status-dot { width:10px; height:10px; border-radius:50%; background:lime; margin-left:5px; }
     .avatar { width:30px; height:30px; border-radius:50%; margin-right:10px; }
-    .status-dot { width:10px; height:10px; border-radius:50%; margin-left:5px; }
-    .online { background:lime; }
-    .offline { background:red; }
-    #incoming { display:none; background:#222; padding:15px; border-radius:8px; margin:20px 0; }
-    #video-area { display:none; margin-top:20px; }
-    #video-container { width:100%; height:60vh; background:black; }
-    #timer { margin-top:10px; }
+    #incoming { display:none; background:#1f1f1f; padding:10px; margin:10px 0; border-radius:8px; }
+    video { width:100%; max-height:300px; margin:10px 0; background:black; }
   </style>
 </head>
-<body>  <h2>Login</h2>
-  <input id="myUsername" placeholder="Enter your username">
-  <button onclick="registerUser()">Go Online</button>  <div id="incoming">
-    <p id="callerName"></p>
-    <button onclick="acceptCall()">Accept</button>
-    <button onclick="rejectCall()">Reject</button>
-  </div>  <div id="appArea" style="display:none;">
-    <hr><h3>Your Chat List</h3><ul id="userList"></ul>
-    <hr><h3>Search Users</h3><input id="searchInput" placeholder="Search username..."><ul id="searchResults"></ul>
-  </div>  <div id="video-area">
-    <div id="video-container"></div>
-    <button id="endBtn" onclick="endCall()">End Call</button>
-    <div id="timer">Call time: <span id="timeDisplay">00:00</span></div>
-  </div>  <!-- Firebase -->  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>  <!-- Daily -->  <script src="https://unpkg.com/@daily-co/daily-js"></script>  <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
-    authDomain: "vcall-5f220.firebaseapp.com",
-    databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
-    projectId: "vcall-5f220",
-    storageBucket: "vcall-5f220.firebasestorage.app",
-    messagingSenderId: "679349443110",
-    appId: "1:679349443110:web:b44818bb14dffafcec24e7",
-    measurementId: "G-JYP2LTE9FV"
-  };
+<body><h2>PeerJS Video Call</h2>
+<input id="username" placeholder="Enter your username">
+<button onclick="goOnline()">Go Online</button><div id="incoming">
+  <p id="callFrom"></p>
+  <button onclick="acceptCall()">Accept</button>
+  <button onclick="rejectCall()">Reject</button>
+</div><h3>Users Online</h3>
+<ul id="users"></ul><video id="remoteVideo" autoplay playsinline></video> <video id="localVideo" muted autoplay playsinline></video> <button onclick="endCall()" style="display:none" id="endBtn">End Call</button>
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+<!-- Firebase --><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><!-- PeerJS --><script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script><script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
+  authDomain: "vcall-5f220.firebaseapp.com",
+  databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
+  projectId: "vcall-5f220",
+  storageBucket: "vcall-5f220.appspot.com",
+  messagingSenderId: "679349443110",
+  appId: "1:679349443110:web:b44818bb14dffafcec24e7"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-  let myUsername='', callId='', panel='';
-  let callFrame=null, timerInterval=null, startTime;
+let username = "", peer = null, currentCall = null;
+let localStream = null;
 
-  function registerUser() {
-    myUsername = document.getElementById("myUsername").value.trim();
-    if(!myUsername) return alert("Enter username!");
-    db.ref("users/"+myUsername).set(true);
-    db.ref("users/"+myUsername).onDisconnect().remove();
-    document.getElementById("appArea").style.display='block';
-    document.getElementById("myUsername").disabled = true;
-    listenIncoming(); showChatList();
-  }
+function goOnline() {
+  username = document.getElementById("username").value.trim();
+  if (!username) return alert("Enter username");
+  peer = new Peer(username, { host: '0.peerjs.com', secure: true, port: 443 });
 
-  function listenIncoming(){
-    db.ref("calls/"+myUsername).on('value',snap=>{
-      const c= snap.val();
-      if(c?.status==='ringing'){
-        document.getElementById("incoming").style.display='block';
-        document.getElementById("callerName").innerText='Call from '+c.from;
-        callId=c.id;
-      }
-      else document.getElementById("incoming").style.display='none';
+  db.ref("users/"+username).set(true);
+  db.ref("users/"+username).onDisconnect().remove();
+
+  listenUsers();
+  listenCalls();
+}
+
+function listenUsers() {
+  db.ref("users").on('value', snap => {
+    const UL = document.getElementById("users");
+    UL.innerHTML = "";
+    snap.forEach(child => {
+      const user = child.key;
+      if (user === username) return;
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <div><img class="avatar" src="https://ui-avatars.com/api/?name=${user}"> ${user}</div>
+        <button onclick="callUser('${user}')">Call</button>
+      `;
+      UL.appendChild(li);
     });
-  }
+  });
+}
 
-  function callUser(user){
-    const id = 'fixed-room';
-    db.ref("calls/"+user).set({ from:myUsername, id, status:'ringing' });
-    db.ref("chatlist/"+myUsername+'/'+user).set(true);
-    db.ref("chatlist/"+user+'/'+myUsername).set(true);
-  }
+function callUser(target) {
+  navigator.mediaDevices.getUserMedia({ video:true, audio:true }).then(stream => {
+    localStream = stream;
+    showVideo(localStream, 'localVideo');
+    const call = peer.call(target, stream);
+    call.on('stream', remote => showVideo(remote, 'remoteVideo'));
+    currentCall = call;
+    document.getElementById("endBtn").style.display = 'block';
+  });
+}
 
-  function acceptCall(){
-    db.ref("calls/"+myUsername).update({status:'accepted'});
-    startCall();
-  }
-  function rejectCall(){
-    db.ref("calls/"+myUsername).remove();
-  }
+function listenCalls() {
+  peer.on('call', call => {
+    db.ref("calls/"+username).set({ from: call.peer });
+    document.getElementById("incoming").style.display = 'block';
+    document.getElementById("callFrom").innerText = `Call from ${call.peer}`;
+    window.pendingCall = call;
+  });
+}
 
-  function startCall(){
-    panel = document.getElementById("video-area");
-    panel.style.display='block';
-    document.getElementById("incoming").style.display='none';
-    const container=document.getElementById("video-container");
-    callFrame = DailyIframe.createFrame(container, { showLeaveButton:false });
-    callFrame.join({ url:`https://vcoo.daily.co/1UjEgVl4BrhmJquutHki` })
-      .then(()=>{
-        startTime = Date.now();
-        timerInterval=setInterval(updateTimer, 1000);
-      });
-    db.ref("calls/"+myUsername).on('value', snap=>{
-      if(snap.val()?.status==='ended') endCall();
-    });
-  }
+function acceptCall() {
+  navigator.mediaDevices.getUserMedia({ video:true, audio:true }).then(stream => {
+    localStream = stream;
+    window.pendingCall.answer(stream);
+    showVideo(stream, 'localVideo');
+    window.pendingCall.on('stream', remote => showVideo(remote, 'remoteVideo'));
+    document.getElementById("endBtn").style.display = 'block';
+    db.ref("calls/"+username).remove();
+    document.getElementById("incoming").style.display = 'none';
+    currentCall = window.pendingCall;
+  });
+}
 
-  function updateTimer(){
-    const diff = Math.floor((Date.now()-startTime)/1000);
-    document.getElementById("timeDisplay").innerText = 
-      String(Math.floor(diff/60)).padStart(2,'0')+':'+String(diff%60).padStart(2,'0');
-  }
+function rejectCall() {
+  db.ref("calls/"+username).remove();
+  document.getElementById("incoming").style.display = 'none';
+}
 
-  function endCall(){
-    callFrame.leave(); clearInterval(timerInterval);
-    db.ref("calls/"+myUsername).remove();
-    location.reload();
-  }
+function showVideo(stream, id) {
+  const video = document.getElementById(id);
+  video.srcObject = stream;
+  video.play();
+}
 
-  function showChatList(){
-    db.ref("chatlist/"+myUsername).on('value',snap=>{
-      const cl = snap.val()||{};
-      const UL = document.getElementById("userList");
-      UL.innerHTML='';
-      Object.keys(cl).forEach(u=>{
-        db.ref("users/"+u).once('value',s2=>{
-          const on=s2.exists();
-          const li=document.createElement('li');
-          li.innerHTML=`
-            <div class="user-info">
-              <img class="avatar" src="https://ui-avatars.com/api/?name=${u}&background=random">
-              <strong>${u}</strong>
-              <span class="status-dot ${on?'online':'offline'}"></span>
-            </div>
-            <button onclick="callUser('${u}')">Call</button>
-          `;
-          UL.appendChild(li);
-        });
-      });
-    });
+function endCall() {
+  if (currentCall) currentCall.close();
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
   }
-
-  document.getElementById("searchInput").oninput = function(){
-    const q=this.value.trim().toLowerCase();
-    const UL=document.getElementById("searchResults"); UL.innerHTML='';
-    if(!q) return;
-    db.ref("users").once('value',snap=>{
-      snap.forEach(c=>{
-        const u=c.key;
-        if(u===myUsername||!u.toLowerCase().includes(q)) return;
-        const li=document.createElement('li');
-        li.innerHTML=`
-          <div class="user-info">
-            <img class="avatar" src="https://ui-avatars.com/api/?name=${u}&background=random">
-            <strong>${u}</strong>
-            <span class="status-dot online"></span>
-          </div>
-          <button onclick="callUser('${u}')">Call</button>`;
-        UL.appendChild(li);
-      });
-    });
-  };
-  </script></body>
+  document.getElementById("endBtn").style.display = 'none';
+  document.getElementById("remoteVideo").srcObject = null;
+  document.getElementById("localVideo").srcObject = null;
+}
+</script></body>
 </html>
