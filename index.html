@@ -1,175 +1,272 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PeerJS Video Call with Firebase</title>
+  <title>Video Call</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { background:#111; color:#fff; font-family:sans-serif; padding:20px; }
-    input, button { width:90%; max-width:300px; margin:10px 0; padding:10px; border-radius:5px; border:none; }
-    button { background:#0a84ff; color:white; font-size:16px; cursor:pointer; }
-    ul { list-style:none; padding:0; }
-    li { background:#222; margin:8px 0; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
-    .avatar { width:30px; height:30px; border-radius:50%; margin-right:10px; }
-    #incoming { display:none; background:#1f1f1f; padding:10px; margin:10px 0; border-radius:8px; }
-    video { width:100%; max-height:300px; margin:10px 0; background:black; border-radius:8px; }
+    body {
+      background: #121212;
+      color: #fff;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 16px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #incoming {
+      display: none;
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+
+    #incoming p {
+      margin: 0 0 8px;
+      font-weight: bold;
+    }
+
+    input, button {
+      width: 100%;
+      max-width: 300px;
+      margin: 10px auto;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      display: block;
+      font-size: 16px;
+    }
+
+    button {
+      background: #0a84ff;
+      color: white;
+      font-weight: bold;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background: #1f1f1f;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+
+    video {
+      width: 100%;
+      max-height: 240px;
+      background: #000;
+      margin-top: 12px;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
 
-<h2>PeerJS Video Call</h2>
-<input id="username" placeholder="Enter your username">
-<button onclick="goOnline()">Go Online</button>
+  <h2 id="title">Video Call</h2>
 
-<div id="incoming">
-  <p id="callFrom"></p>
-  <button onclick="acceptCall()">Accept</button>
-  <button onclick="rejectCall()">Reject</button>
-</div>
+  <div id="incoming">
+    <p id="callFrom"></p>
+    <button onclick="acceptCall()">Accept</button>
+    <button onclick="rejectCall()">Reject</button>
+  </div>
 
-<h3>Users Online</h3>
-<ul id="users"></ul>
+  <h3>Online Users</h3>
+  <ul id="users"></ul>
 
-<video id="remoteVideo" autoplay playsinline></video>
-<video id="localVideo" muted autoplay playsinline></video>
-<button onclick="endCall()" style="display:none" id="endBtn">End Call</button>
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" muted autoplay playsinline></video>
+  <button onclick="endCall()" style="display:none" id="endBtn">End Call</button>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<!-- PeerJS -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
-  authDomain: "vcall-5f220.firebaseapp.com",
-  databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
-  projectId: "vcall-5f220",
-  storageBucket: "vcall-5f220.appspot.com",
-  messagingSenderId: "679349443110",
-  appId: "1:679349443110:web:b44818bb14dffafcec24e7"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
-let username = "", peer = null, currentCall = null;
-let localStream = null;
+  <script>
+    const params = new URLSearchParams(location.search);
+    const username = params.get("username") || "Guest" + Math.floor(Math.random() * 1000);
+    document.getElementById("title").innerText = `Welcome, ${username}`;
 
-function goOnline() {
-  username = document.getElementById("username").value.trim();
-  if (!username) return alert("Enter username");
-  peer = new Peer(username, { host: '0.peerjs.com', secure: true, port: 443 });
+    const firebaseConfig = {
+      apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
+      authDomain: "vcall-5f220.firebaseapp.com",
+      databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
+      projectId: "vcall-5f220",
+      storageBucket: "vcall-5f220.appspot.com",
+      messagingSenderId: "679349443110",
+      appId: "1:679349443110:web:b44818bb14dffafcec24e7"
+    };
 
-  db.ref("users/" + username).set(true);
-  db.ref("users/" + username).onDisconnect().remove();
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const ringtone = document.getElementById("ringtone");
+    let peer = null, currentCall = null, localStream = null;
 
-  listenUsers();
-  listenCalls();
-}
-
-function listenUsers() {
-  db.ref("users").on('value', snap => {
-    const UL = document.getElementById("users");
-    UL.innerHTML = "";
-    snap.forEach(child => {
-      const user = child.key;
-      if (user === username) return;
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <div><img class="avatar" src="https://ui-avatars.com/api/?name=${user}"> ${user}</div>
-        <button onclick="callUser('${user}')">Call</button>
-      `;
-      UL.appendChild(li);
+    peer = new Peer(username, {
+      host: '0.peerjs.com',
+      port: 443,
+      secure: true
     });
-  });
-}
 
-function callUser(target) {
-  navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
+    peer.on('open', id => {
+      db.ref("users/" + username).set({ online: true, joinedAt: Date.now() });
+      db.ref("users/" + username).onDisconnect().remove();
+      loadOnlineUsers();
+
+      db.ref("calls/" + username).on('value', snap => {
+        if (snap.exists()) {
+          const caller = snap.val().from;
+          document.getElementById("callFrom").innerHTML =
+            `<img src="https://ui-avatars.com/api/?name=${caller}" class="avatar" /> Call from <b>${caller}</b>`;
+          document.getElementById("incoming").style.display = 'block';
+          ringtone.play().catch(() => console.log("🔇 Autoplay blocked"));
+        }
+      });
+    });
+
+    peer.on('call', call => {
+      window.pendingCall = call;
+    });
+
+    function loadOnlineUsers() {
+      db.ref("users").on('value', snapshot => {
+        const UL = document.getElementById("users");
+        UL.innerHTML = "";
+        snapshot.forEach(child => {
+          const user = child.key;
+          if (user === username) return;
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div><img class="avatar" src="https://ui-avatars.com/api/?name=${user}" /> ${user}</div>
+            <button onclick="safeCallUser('${user}')">Call</button>
+          `;
+          UL.appendChild(li);
+        });
+      });
     }
-  }).then(stream => {
-    localStream = stream;
-    showVideo(localStream, 'localVideo');
-    const call = peer.call(target, stream);
-    call.on('stream', remote => {
-      showVideo(remote, 'remoteVideo');
-      setupPiP();
-    });
-    currentCall = call;
-    document.getElementById("endBtn").style.display = 'block';
-  });
-}
 
-function listenCalls() {
-  peer.on('call', call => {
-    db.ref("calls/" + username).set({ from: call.peer });
-    document.getElementById("incoming").style.display = 'block';
-    document.getElementById("callFrom").innerText = `Call from ${call.peer}`;
-    window.pendingCall = call;
-  });
-}
-
-function acceptCall() {
-  navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    }
-  }).then(stream => {
-    localStream = stream;
-    window.pendingCall.answer(stream);
-    showVideo(stream, 'localVideo');
-    window.pendingCall.on('stream', remote => {
-      showVideo(remote, 'remoteVideo');
-      setupPiP();
-    });
-    document.getElementById("endBtn").style.display = 'block';
-    db.ref("calls/" + username).remove();
-    document.getElementById("incoming").style.display = 'none';
-    currentCall = window.pendingCall;
-  });
-}
-
-function rejectCall() {
-  db.ref("calls/" + username).remove();
-  document.getElementById("incoming").style.display = 'none';
-}
-
-function showVideo(stream, id) {
-  const video = document.getElementById(id);
-  video.srcObject = stream;
-  video.play();
-}
-
-function endCall() {
-  if (currentCall) currentCall.close();
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-  }
-  document.getElementById("endBtn").style.display = 'none';
-  document.getElementById("remoteVideo").srcObject = null;
-  document.getElementById("localVideo").srcObject = null;
-}
-
-function setupPiP() {
-  const remoteVideo = document.getElementById("remoteVideo");
-  if (document.pictureInPictureEnabled) {
-    remoteVideo.addEventListener('click', () => {
-      if (document.pictureInPictureElement) {
-        document.exitPictureInPicture();
-      } else {
-        remoteVideo.requestPictureInPicture();
+    function safeCallUser(target) {
+      if (!peer || !peer.open) {
+        setTimeout(() => safeCallUser(target), 500);
+        return;
       }
-    });
-  }
-}
-</script>
+      callUser(target);
+    }
+
+    function callUser(target) {
+      requestMedia().then(stream => {
+        localStream = stream;
+        showVideo(stream, 'localVideo');
+        db.ref("calls/" + target).set({ from: username });
+
+        const call = peer.call(target, stream);
+        call.on('stream', remote => {
+          showVideo(remote, 'remoteVideo');
+          setupPiP();
+        });
+        call.on('error', err => {
+          alert("Call error: " + err.message);
+        });
+
+        currentCall = call;
+        document.getElementById("endBtn").style.display = 'block';
+      }).catch(err => {
+        alert("Permission denied: " + err.message);
+      });
+    }
+
+    function acceptCall() {
+      ringtone.pause();
+      ringtone.currentTime = 0;
+      requestMedia().then(stream => {
+        localStream = stream;
+        showVideo(stream, 'localVideo');
+        window.pendingCall.answer(stream);
+        window.pendingCall.on('stream', remote => {
+          showVideo(remote, 'remoteVideo');
+          setupPiP();
+        });
+        currentCall = window.pendingCall;
+        document.getElementById("incoming").style.display = 'none';
+        document.getElementById("endBtn").style.display = 'block';
+        db.ref("calls/" + username).remove();
+      }).catch(err => {
+        alert("Permission denied: " + err.message);
+      });
+    }
+
+    function rejectCall() {
+      ringtone.pause();
+      ringtone.currentTime = 0;
+      document.getElementById("incoming").style.display = 'none';
+      db.ref("calls/" + username).remove();
+    }
+
+    function endCall() {
+      if (currentCall) currentCall.close();
+      if (localStream) localStream.getTracks().forEach(track => track.stop());
+      document.getElementById("endBtn").style.display = 'none';
+      document.getElementById("remoteVideo").srcObject = null;
+      document.getElementById("localVideo").srcObject = null;
+    }
+
+    function showVideo(stream, id) {
+      const video = document.getElementById(id);
+      video.srcObject = stream;
+      video.play();
+    }
+
+    function setupPiP() {
+      const remoteVideo = document.getElementById("remoteVideo");
+      if (document.pictureInPictureEnabled) {
+        remoteVideo.addEventListener('click', () => {
+          if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+          } else {
+            remoteVideo.requestPictureInPicture().catch(() => {});
+          }
+        });
+      }
+    }
+
+    function requestMedia() {
+      return navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+    }
+
+    navigator.permissions.query({ name: "microphone" }).then(p => {
+      console.log("🎤 Microphone:", p.state);
+    }).catch(() => {});
+
+    navigator.permissions.query({ name: "camera" }).then(p => {
+      console.log("📷 Camera:", p.state);
+    }).catch(() => {});
+  </script>
+
 </body>
 </html>
