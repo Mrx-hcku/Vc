@@ -1,4 +1,5 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
   <title>PeerJS Video Call with Firebase</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,22 +9,37 @@
     button { background:#0a84ff; color:white; font-size:16px; cursor:pointer; }
     ul { list-style:none; padding:0; }
     li { background:#222; margin:8px 0; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
-    .status-dot { width:10px; height:10px; border-radius:50%; background:lime; margin-left:5px; }
     .avatar { width:30px; height:30px; border-radius:50%; margin-right:10px; }
     #incoming { display:none; background:#1f1f1f; padding:10px; margin:10px 0; border-radius:8px; }
-    video { width:100%; max-height:300px; margin:10px 0; background:black; }
+    video { width:100%; max-height:300px; margin:10px 0; background:black; border-radius:8px; }
   </style>
 </head>
-<body><h2>PeerJS Video Call</h2>
+<body>
+
+<h2>PeerJS Video Call</h2>
 <input id="username" placeholder="Enter your username">
-<button onclick="goOnline()">Go Online</button><div id="incoming">
+<button onclick="goOnline()">Go Online</button>
+
+<div id="incoming">
   <p id="callFrom"></p>
   <button onclick="acceptCall()">Accept</button>
   <button onclick="rejectCall()">Reject</button>
-</div><h3>Users Online</h3>
-<ul id="users"></ul><video id="remoteVideo" autoplay playsinline></video> <video id="localVideo" muted autoplay playsinline></video> <button onclick="endCall()" style="display:none" id="endBtn">End Call</button>
+</div>
 
-<!-- Firebase --><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><!-- PeerJS --><script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script><script>
+<h3>Users Online</h3>
+<ul id="users"></ul>
+
+<video id="remoteVideo" autoplay playsinline></video>
+<video id="localVideo" muted autoplay playsinline></video>
+<button onclick="endCall()" style="display:none" id="endBtn">End Call</button>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- PeerJS -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
   authDomain: "vcall-5f220.firebaseapp.com",
@@ -44,8 +60,8 @@ function goOnline() {
   if (!username) return alert("Enter username");
   peer = new Peer(username, { host: '0.peerjs.com', secure: true, port: 443 });
 
-  db.ref("users/"+username).set(true);
-  db.ref("users/"+username).onDisconnect().remove();
+  db.ref("users/" + username).set(true);
+  db.ref("users/" + username).onDisconnect().remove();
 
   listenUsers();
   listenCalls();
@@ -69,11 +85,21 @@ function listenUsers() {
 }
 
 function callUser(target) {
-  navigator.mediaDevices.getUserMedia({ video:true, audio:true }).then(stream => {
+  navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true
+    }
+  }).then(stream => {
     localStream = stream;
     showVideo(localStream, 'localVideo');
     const call = peer.call(target, stream);
-    call.on('stream', remote => showVideo(remote, 'remoteVideo'));
+    call.on('stream', remote => {
+      showVideo(remote, 'remoteVideo');
+      setupPiP();
+    });
     currentCall = call;
     document.getElementById("endBtn").style.display = 'block';
   });
@@ -81,7 +107,7 @@ function callUser(target) {
 
 function listenCalls() {
   peer.on('call', call => {
-    db.ref("calls/"+username).set({ from: call.peer });
+    db.ref("calls/" + username).set({ from: call.peer });
     document.getElementById("incoming").style.display = 'block';
     document.getElementById("callFrom").innerText = `Call from ${call.peer}`;
     window.pendingCall = call;
@@ -89,20 +115,30 @@ function listenCalls() {
 }
 
 function acceptCall() {
-  navigator.mediaDevices.getUserMedia({ video:true, audio:true }).then(stream => {
+  navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true
+    }
+  }).then(stream => {
     localStream = stream;
     window.pendingCall.answer(stream);
     showVideo(stream, 'localVideo');
-    window.pendingCall.on('stream', remote => showVideo(remote, 'remoteVideo'));
+    window.pendingCall.on('stream', remote => {
+      showVideo(remote, 'remoteVideo');
+      setupPiP();
+    });
     document.getElementById("endBtn").style.display = 'block';
-    db.ref("calls/"+username).remove();
+    db.ref("calls/" + username).remove();
     document.getElementById("incoming").style.display = 'none';
     currentCall = window.pendingCall;
   });
 }
 
 function rejectCall() {
-  db.ref("calls/"+username).remove();
+  db.ref("calls/" + username).remove();
   document.getElementById("incoming").style.display = 'none';
 }
 
@@ -121,5 +157,19 @@ function endCall() {
   document.getElementById("remoteVideo").srcObject = null;
   document.getElementById("localVideo").srcObject = null;
 }
-</script></body>
+
+function setupPiP() {
+  const remoteVideo = document.getElementById("remoteVideo");
+  if (document.pictureInPictureEnabled) {
+    remoteVideo.addEventListener('click', () => {
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture();
+      } else {
+        remoteVideo.requestPictureInPicture();
+      }
+    });
+  }
+}
+</script>
+</body>
 </html>
