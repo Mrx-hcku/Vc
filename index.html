@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Video Call WebApp</title>
+  <title>Smart Video Call</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
@@ -24,18 +24,15 @@
       color: white;
       cursor: pointer;
     }
-    ul {
-      list-style-type: none;
-      padding: 0;
-    }
+    ul { list-style-type: none; padding: 0; }
     li {
       background-color: #1f1f1f;
       margin-bottom: 8px;
       padding: 10px;
       border-radius: 8px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
     }
     .user-info {
       display: flex;
@@ -54,18 +51,14 @@
       display: inline-block;
       margin-left: 5px;
     }
-    .online {
-      background: lime;
-    }
-    .offline {
-      background: red;
-    }
+    .online { background: lime; }
+    .offline { background: red; }
     #incoming {
       display: none;
-      margin-top: 20px;
       background-color: #1f1f1f;
       padding: 15px;
       border-radius: 10px;
+      margin-top: 20px;
     }
     #video-call {
       margin-top: 20px;
@@ -102,7 +95,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  <!-- Jitsi SDK -->
+  <!-- Jitsi Meet SDK -->
   <script src="https://meet.jit.si/external_api.js"></script>
 
   <script>
@@ -162,7 +155,9 @@
     function callUser(targetUser) {
       const from = myUsername;
       const to = targetUser;
-      callRoom = "call-" + from + "-" + to;
+
+      // Unique room name to prevent collision
+      callRoom = "call-" + from + "-" + to + "-" + Date.now();
 
       db.ref("calls/" + to).set({
         caller: from,
@@ -185,7 +180,15 @@
         width: "100%",
         height: 600,
         parentNode: document.getElementById('video-call'),
-        configOverwrite: { startWithAudioMuted: false, startWithVideoMuted: false }
+        configOverwrite: {
+          startWithAudioMuted: false,
+          startWithVideoMuted: false,
+          enableWelcomePage: false,
+          prejoinPageEnabled: false
+        },
+        interfaceConfigOverwrite: {
+          DISABLE_JOIN_LEAVE_NOTIFICATIONS: true
+        }
       };
 
       const api = new JitsiMeetExternalAPI(domain, options);
@@ -256,4 +259,4 @@
   </script>
 
 </body>
-</html>
+  </html>
