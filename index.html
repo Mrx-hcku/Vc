@@ -37,7 +37,7 @@
     }
     #authSection {
       max-width: 320px;
-      margin: 50px auto;
+      margin: 70px auto;
       text-align: center;
     }
     #appSection.hidden, #callScreen.hidden {
@@ -67,6 +67,7 @@
     }
     video {
       width: 100%;
+      max-height: 45vh;
       border-radius: 12px;
       background: black;
       margin-bottom: 10px;
@@ -83,7 +84,10 @@
     .call-controls {
       display: flex;
       justify-content: space-around;
-      margin-top: 16px;
+      position: absolute;
+      bottom: 20px;
+      left: 0; right: 0;
+      padding: 0 20px;
     }
     .call-controls button {
       width: 60px;
@@ -112,9 +116,10 @@
     <p id="authMsg" style="color:red"></p>
   </div>
 
-  <!-- App Main UI -->
+  <!-- App UI -->
   <div id="appSection" class="hidden">
     <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
+    
     <h3>Online Users</h3>
     <ul id="users"></ul>
 
@@ -172,6 +177,9 @@
     auth.onAuthStateChanged(user => {
       if (user && localStorage.getItem("keepLogged")) {
         startApp(user);
+      } else {
+        authSectionEl().classList.remove("hidden");
+        appSectionEl().classList.add("hidden");
       }
     });
   };
@@ -211,13 +219,17 @@
         }
       });
       loadUsers();
+      loadRecentCalls();
     });
 
     peer.on("call", call => {
       window.pendingCall = call;
     });
 
-    setInterval(loadUsers, 5000);
+    setInterval(() => {
+      loadUsers();
+      loadRecentCalls();
+    }, 5000);
   }
 
   function loadUsers() {
@@ -232,6 +244,20 @@
             <button onclick="startCall('${user}')">📞</button>`;
           usersEl().appendChild(li);
         }
+      });
+    });
+  }
+
+  function loadRecentCalls() {
+    db.ref("recent/" + username).once("value", snap => {
+      recentEl().innerHTML = "";
+      snap.forEach(child => {
+        const user = child.key;
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span><img class="avatar" src="https://ui-avatars.com/api/?name=${user}"> ${user}</span>
+          <button onclick="startCall('${user}')">📞</button>`;
+        recentEl().appendChild(li);
       });
     });
   }
@@ -316,7 +342,7 @@
     el.play();
   }
 
-  // Helper
+  // Helpers
   const emailEl = () => document.getElementById("email");
   const passwordEl = () => document.getElementById("password");
   const keepLoggedEl = () => document.getElementById("keepLogged");
@@ -326,6 +352,7 @@
   const callScreenEl = () => document.getElementById("callScreen");
   const searchBoxEl = () => document.getElementById("searchBox");
   const usersEl = () => document.getElementById("users");
+  const recentEl = () => document.getElementById("recent");
   const callFromEl = () => document.getElementById("callFrom");
   const incomingEl = () => document.getElementById("incoming");
   const localVideoEl = () => document.getElementById("localVideo");
