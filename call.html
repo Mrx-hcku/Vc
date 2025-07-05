@@ -1,0 +1,33 @@
+<div id="loginView">
+  <h2>Login</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <button onclick="signup()">Sign Up</button>
+  <p id="authMsg" style="color:red;text-align:center;"></p>
+</div>
+
+<div id="homeView" class="hidden">
+  <h2>Welcome, <span id="title"></span></h2>
+  <input type="text" id="searchInput" placeholder="Search user...">
+  <ul id="users"></ul>
+</div>
+
+<div id="callView" class="hidden">
+  <div id="incoming" class="hidden">
+    <p id="callFrom"></p>
+    <button onclick="acceptCall()">Accept</button>
+    <button onclick="rejectCall()">Reject</button>
+  </div>
+
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+
+  <div id="controls">
+    <button onclick="toggleMute()">Mute</button>
+    <button onclick="toggleSpeaker()">Speaker</button>
+    <button onclick="endCall()">End</button>
+  </div>
+</div>
+
+<audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
