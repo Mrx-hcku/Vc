@@ -1,3 +1,7 @@
+
+
+
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -9,21 +13,10 @@
       color: white;
       font-family: sans-serif;
       margin: 0;
-      padding: 0;
-    }
-
-    .container {
       padding: 16px;
     }
-
-    h2, h3 {
-      text-align: center;
-    }
-
-    .hidden {
-      display: none;
-    }
-
+    .hidden { display: none; }
+    h2, h3 { text-align: center; }
     input, button {
       padding: 12px;
       margin: 8px auto;
@@ -34,18 +27,12 @@
       font-size: 16px;
       display: block;
     }
-
     button {
       background: #0a84ff;
       color: white;
       font-weight: bold;
     }
-
-    ul {
-      padding: 0;
-      list-style: none;
-    }
-
+    ul { padding: 0; list-style: none; }
     li {
       background: #1e1e1e;
       padding: 12px;
@@ -55,87 +42,85 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .avatar {
       width: 36px;
       height: 36px;
       border-radius: 50%;
       margin-right: 10px;
     }
-
     video {
       width: 100%;
       background: #000;
       border-radius: 10px;
       margin-top: 12px;
     }
-
-    #controls {
-      display: flex;
-      justify-content: space-around;
-      margin: 10px 0;
-    }
-
     #incoming {
       background: #1f1f1f;
       padding: 10px;
-      margin: 10px;
+      margin: 10px 0;
       border-radius: 8px;
       text-align: center;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-around;
+      margin: 12px 0;
+    }
+    .controls button {
+      width: 30%;
     }
   </style>
 </head>
 <body>
-  <div class="container">
 
-    <!-- Login View -->
-    <div id="loginView">
-      <h2>Login</h2>
-      <input type="email" id="email" placeholder="Email">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="login()">Login</button>
-      <button onclick="signup()">Sign Up</button>
-      <p id="authMsg" style="text-align:center;color:red;"></p>
-    </div>
-
-    <!-- Main Call View -->
-    <div id="callView" class="hidden">
-      <h2 id="title">Welcome</h2>
-
-      <div id="incoming" class="hidden">
-        <p id="callFrom"></p>
-        <button onclick="acceptCall()">Accept</button>
-        <button onclick="rejectCall()">Reject</button>
-      </div>
-
-      <h3>Online Users</h3>
-      <ul id="users"></ul>
-
-      <video id="remoteVideo" autoplay playsinline></video>
-      <video id="localVideo" autoplay playsinline muted></video>
-
-      <div id="controls" class="hidden">
-        <button onclick="toggleMute()">Mute</button>
-        <button onclick="toggleSpeaker()">Speaker</button>
-        <button onclick="endCall()">End</button>
-      </div>
-
-      <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
-    </div>
+  <!-- Login -->
+  <div id="loginView">
+    <h2>Login to Video Call</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Sign Up</button>
+    <p id="authMsg" style="text-align:center;color:red;"></p>
   </div>
 
-  <!-- Firebase & PeerJS -->
+  <!-- Main Call UI -->
+  <div id="callView" class="hidden">
+    <h2 id="title">Video Call</h2>
+
+    <div id="incoming" class="hidden">
+      <p id="callFrom"></p>
+      <button onclick="acceptCall()">Accept</button>
+      <button onclick="rejectCall()">Reject</button>
+    </div>
+
+    <h3>Online Users</h3>
+    <ul id="users"></ul>
+
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay playsinline muted></video>
+
+    <div class="controls hidden" id="callControls">
+      <button onclick="toggleMute()">Mute</button>
+      <button onclick="toggleSpeaker()">Speaker</button>
+      <button onclick="endCall()">End</button>
+    </div>
+
+    <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
+  </div>
+
+  <!-- Firebase + PeerJS -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
       authDomain: "vcall-5f220.firebaseapp.com",
-      databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
       projectId: "vcall-5f220",
+      databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
       storageBucket: "vcall-5f220.appspot.com",
       messagingSenderId: "679349443110",
       appId: "1:679349443110:web:b44818bb14dffafcec24e7"
@@ -144,72 +129,81 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const auth = firebase.auth();
+    const messaging = firebase.messaging();
     const ringtone = document.getElementById("ringtone");
 
-    let username = "", peer = null, currentCall = null, localStream = null;
-    let isMuted = false, isSpeaker = true;
+    let username = "";
+    let peer = null, currentCall = null, localStream = null;
+    let isMuted = false, useSpeaker = true;
+
+    auth.onAuthStateChanged(user => {
+      if (user) startApp(user);
+    });
 
     function login() {
-      const email = emailEl.value;
-      const pass = passwordEl.value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(res => startApp(res.user))
-        .catch(err => authMsg.innerText = err.message);
+      const email = emailInput().value;
+      const pass = passInput().value;
+      auth.signInWithEmailAndPassword(email, pass).then(res => {
+        startApp(res.user);
+      }).catch(err => setMsg(err.message));
     }
 
     function signup() {
-      const email = emailEl.value;
-      const pass = passwordEl.value;
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then(res => startApp(res.user))
-        .catch(err => authMsg.innerText = err.message);
+      const email = emailInput().value;
+      const pass = passInput().value;
+      auth.createUserWithEmailAndPassword(email, pass).then(res => {
+        startApp(res.user);
+      }).catch(err => setMsg(err.message));
     }
 
     function startApp(user) {
-      loginView.classList.add("hidden");
-      callView.classList.remove("hidden");
+      document.getElementById("loginView").classList.add("hidden");
+      document.getElementById("callView").classList.remove("hidden");
+
       username = user.email.split('@')[0];
-      title.innerText = `Welcome, ${username}`;
+      document.getElementById("title").innerText = `Welcome, ${username}`;
 
       peer = new Peer(username, { host: '0.peerjs.com', port: 443, secure: true });
 
       peer.on('open', () => {
         db.ref("users/" + username).set(true);
         db.ref("users/" + username).onDisconnect().remove();
+        initPush();
         loadOnlineUsers();
 
-        db.ref("calls/" + username).on('value', snap => {
+        db.ref("calls/" + username).on("value", snap => {
           if (snap.exists()) {
             const caller = snap.val().from;
-            callFrom.innerHTML = `<img src="https://ui-avatars.com/api/?name=${caller}" class="avatar"> Call from <b>${caller}</b>`;
-            incoming.classList.remove("hidden");
+            document.getElementById("callFrom").innerHTML =
+              `<img src="https://ui-avatars.com/api/?name=${caller}" class="avatar"> Call from <b>${caller}</b>`;
+            document.getElementById("incoming").classList.remove("hidden");
             ringtone.play().catch(() => {});
           }
         });
       });
 
-      peer.on('call', call => window.pendingCall = call);
+      peer.on("call", call => { window.pendingCall = call; });
     }
 
     function loadOnlineUsers() {
       db.ref("users").on("value", snap => {
-        users.innerHTML = "";
+        const UL = document.getElementById("users");
+        UL.innerHTML = "";
         snap.forEach(child => {
           const user = child.key;
           if (user !== username) {
             const li = document.createElement("li");
-            li.innerHTML = `<div><img src="https://ui-avatars.com/api/?name=${user}" class="avatar">${user}</div><button onclick="safeCallUser('${user}')">Call</button>`;
-            users.appendChild(li);
+            li.innerHTML = `
+              <div><img src="https://ui-avatars.com/api/?name=${user}" class="avatar">${user}</div>
+              <button onclick="safeCallUser('${user}')">Call</button>`;
+            UL.appendChild(li);
           }
         });
       });
     }
 
     function safeCallUser(target) {
-      if (!peer || !peer.open) {
-        setTimeout(() => safeCallUser(target), 500);
-        return;
-      }
+      if (!peer || !peer.open) return setTimeout(() => safeCallUser(target), 500);
       callUser(target);
     }
 
@@ -220,13 +214,34 @@
         db.ref("calls/" + target).set({ from: username });
 
         const call = peer.call(target, stream);
-        call.on('stream', remote => {
-          showVideo(remote, 'remoteVideo');
-          controls.classList.remove("hidden");
-        });
-        call.on('error', err => alert("Call error: " + err.message));
+        call.on("stream", remote => showVideo(remote, 'remoteVideo'));
+        call.on("error", err => alert("Call error: " + err.message));
         currentCall = call;
-      }).catch(err => alert("Permission error: " + err.message));
+        toggleControls(true);
+
+        // 🔔 Push notification
+        db.ref("tokens/" + target).once("value").then(snap => {
+          const token = snap.val();
+          if (token) {
+            fetch("https://fcm.googleapis.com/fcm/send", {
+              method: "POST",
+              headers: {
+                "Authorization": "key=AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                to: token,
+                notification: {
+                  title: "📞 Incoming Call",
+                  body: `Call from ${username}`,
+                  icon: `https://ui-avatars.com/api/?name=${username}`,
+                  click_action: "https://mrx-hcku.github.io/Vc/"
+                }
+              })
+            });
+          }
+        });
+      });
     }
 
     function acceptCall() {
@@ -236,49 +251,48 @@
         localStream = stream;
         showVideo(stream, 'localVideo');
         window.pendingCall.answer(stream);
-        window.pendingCall.on('stream', remote => {
-          showVideo(remote, 'remoteVideo');
-          controls.classList.remove("hidden");
-        });
+        window.pendingCall.on("stream", remote => showVideo(remote, 'remoteVideo'));
         currentCall = window.pendingCall;
-        incoming.classList.add("hidden");
+        document.getElementById("incoming").classList.add("hidden");
         db.ref("calls/" + username).remove();
+        toggleControls(true);
       });
     }
 
     function rejectCall() {
       ringtone.pause();
       ringtone.currentTime = 0;
-      incoming.classList.add("hidden");
+      document.getElementById("incoming").classList.add("hidden");
       db.ref("calls/" + username).remove();
     }
 
     function endCall() {
       if (currentCall) currentCall.close();
       if (localStream) localStream.getTracks().forEach(t => t.stop());
-      localVideo.srcObject = null;
-      remoteVideo.srcObject = null;
-      controls.classList.add("hidden");
-    }
-
-    function toggleMute() {
-      if (!localStream) return;
-      isMuted = !isMuted;
-      localStream.getAudioTracks()[0].enabled = !isMuted;
-      alert(isMuted ? "Mic muted" : "Mic unmuted");
-    }
-
-    function toggleSpeaker() {
-      const remote = document.getElementById("remoteVideo");
-      remote.setSinkId && remote.setSinkId(isSpeaker ? "default" : "speaker");
-      isSpeaker = !isSpeaker;
-      alert(isSpeaker ? "Speaker on" : "Speaker off");
+      document.getElementById("remoteVideo").srcObject = null;
+      document.getElementById("localVideo").srcObject = null;
+      toggleControls(false);
     }
 
     function showVideo(stream, id) {
       const video = document.getElementById(id);
       video.srcObject = stream;
       video.play();
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      localStream.getAudioTracks()[0].enabled = !isMuted;
+      alert("Mic " + (isMuted ? "Muted" : "Unmuted"));
+    }
+
+    function toggleSpeaker() {
+      useSpeaker = !useSpeaker;
+      alert("Speaker toggled (not controllable via JS reliably on all devices)");
+    }
+
+    function toggleControls(show) {
+      document.getElementById("callControls").classList.toggle("hidden", !show);
     }
 
     function requestMedia() {
@@ -292,19 +306,22 @@
       });
     }
 
-    // Element shortcuts
-    const loginView = document.getElementById("loginView");
-    const callView = document.getElementById("callView");
-    const emailEl = document.getElementById("email");
-    const passwordEl = document.getElementById("password");
-    const authMsg = document.getElementById("authMsg");
-    const title = document.getElementById("title");
-    const users = document.getElementById("users");
-    const incoming = document.getElementById("incoming");
-    const callFrom = document.getElementById("callFrom");
-    const localVideo = document.getElementById("localVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
-    const controls = document.getElementById("controls");
+    function initPush() {
+      messaging.getToken({
+        vapidKey: "BPzMTu3Vq0uLV9gjZh3Qqngg2ACB6-VD5dotzdJb1LpZrfmcpRy2Yy-3Tgbo--RKcZEBQlhW_UFiQZb4Vwr14tY"
+      }).then(token => {
+        db.ref("tokens/" + username).set(token);
+      }).catch(err => {
+        console.log("Push permission denied", err);
+      });
+    }
+
+    function setMsg(msg) {
+      document.getElementById("authMsg").innerText = msg;
+    }
+
+    function emailInput() { return document.getElementById("email"); }
+    function passInput() { return document.getElementById("password"); }
   </script>
 </body>
   </html>
