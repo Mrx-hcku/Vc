@@ -37,13 +37,10 @@
     }
     #authSection {
       max-width: 320px;
-      margin: 80px auto;
+      margin: 50px auto;
       text-align: center;
-      transition: all 0.3s ease;
     }
-    #appSection.hidden, #callScreen.hidden {
-      display: none;
-    }
+    #appSection, #callScreen { display: none; }
     #users li, #recent li {
       background: #1e1e1e;
       padding: 10px;
@@ -102,8 +99,7 @@
 <header>Video Call App</header>
 
 <main>
-
-  <!-- Login -->
+  <!-- Login UI -->
   <div id="authSection">
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
@@ -113,8 +109,8 @@
     <p id="authMsg" style="color:red"></p>
   </div>
 
-  <!-- Home -->
-  <div id="appSection" class="hidden">
+  <!-- App UI -->
+  <div id="appSection">
     <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
     <h3>Online Users</h3>
     <ul id="users"></ul>
@@ -129,8 +125,8 @@
     </div>
   </div>
 
-  <!-- Call Screen -->
-  <div id="callScreen" class="hidden">
+  <!-- Call UI -->
+  <div id="callScreen">
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo" autoplay playsinline muted></video>
     <div class="call-controls">
@@ -141,10 +137,8 @@
   </div>
 
   <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
-
 </main>
 
-<!-- Firebase + PeerJS -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -169,61 +163,35 @@
   let username = "", peer = null, currentCall = null, localStream = null;
   let isMuted = false;
 
+  // Auto login if session exists
   window.onload = () => {
-    const email = localStorage.getItem("savedEmail");
-    const pass = localStorage.getItem("savedPassword");
-    const keep = localStorage.getItem("keepLogged");
-
-    if (keep === "1" && email && pass) {
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(res => startApp(res.user))
-        .catch(() => showLogin());
-    } else {
-      showLogin();
+    if (localStorage.getItem("loggedIn") === "true") {
+      auth.onAuthStateChanged(user => {
+        if (user) startApp(user);
+      });
     }
   };
 
-  function showLogin() {
-    authSectionEl().classList.remove("hidden");
-    appSectionEl().classList.add("hidden");
-  }
-
   function login() {
-    const email = emailEl().value.trim();
-    const pass = passwordEl().value.trim();
-
-    auth.signInWithEmailAndPassword(email, pass)
-      .then(res => {
-        if (keepLoggedEl().checked) {
-          localStorage.setItem("keepLogged", "1");
-          localStorage.setItem("savedEmail", email);
-          localStorage.setItem("savedPassword", pass);
-        }
-        startApp(res.user);
-      })
-      .catch(e => authMsgEl().innerText = e.message);
+    const email = emailEl().value, pass = passwordEl().value;
+    auth.signInWithEmailAndPassword(email, pass).then(res => {
+      if (keepLoggedEl().checked) localStorage.setItem("loggedIn", "true");
+      startApp(res.user);
+    }).catch(e => authMsgEl().innerText = e.message);
   }
 
   function signup() {
-    const email = emailEl().value.trim();
-    const pass = passwordEl().value.trim();
-
-    auth.createUserWithEmailAndPassword(email, pass)
-      .then(res => {
-        if (keepLoggedEl().checked) {
-          localStorage.setItem("keepLogged", "1");
-          localStorage.setItem("savedEmail", email);
-          localStorage.setItem("savedPassword", pass);
-        }
-        startApp(res.user);
-      })
-      .catch(e => authMsgEl().innerText = e.message);
+    const email = emailEl().value, pass = passwordEl().value;
+    auth.createUserWithEmailAndPassword(email, pass).then(res => {
+      if (keepLoggedEl().checked) localStorage.setItem("loggedIn", "true");
+      startApp(res.user);
+    }).catch(e => authMsgEl().innerText = e.message);
   }
 
   function startApp(user) {
     username = user.email.split("@")[0];
-    authSectionEl().classList.add("hidden");
-    appSectionEl().classList.remove("hidden");
+    authSectionEl().style.display = "none";
+    appSectionEl().style.display = "block";
 
     peer = new Peer(username, { host: "0.peerjs.com", port: 443, secure: true });
 
@@ -241,7 +209,7 @@
       });
 
       loadUsers();
-      loadRecentCalls();
+      loadRecent();
     });
 
     peer.on("call", call => {
@@ -250,7 +218,7 @@
 
     setInterval(() => {
       loadUsers();
-      loadRecentCalls();
+      loadRecent();
     }, 5000);
   }
 
@@ -270,7 +238,7 @@
     });
   }
 
-  function loadRecentCalls() {
+  function loadRecent() {
     db.ref("recent/" + username).once("value", snap => {
       recentEl().innerHTML = "";
       snap.forEach(child => {
@@ -300,11 +268,9 @@
       db.ref("calls/" + target).set({ from: username });
 
       const call = peer.call(target, stream);
-      call.on("stream", remote => {
-        showVideo(remote, remoteVideoEl());
-      });
+      call.on("stream", remote => showVideo(remote, remoteVideoEl()));
       currentCall = call;
-      callScreenEl().classList.remove("hidden");
+      callScreenEl().style.display = "block";
     });
   }
 
@@ -316,12 +282,10 @@
       localStream = stream;
       showVideo(stream, localVideoEl());
       window.pendingCall.answer(stream);
-      window.pendingCall.on("stream", remote => {
-        showVideo(remote, remoteVideoEl());
-      });
+      window.pendingCall.on("stream", remote => showVideo(remote, remoteVideoEl()));
       currentCall = window.pendingCall;
-      callScreenEl().classList.remove("hidden");
       db.ref("calls/" + username).remove();
+      callScreenEl().style.display = "block";
     });
   }
 
@@ -336,7 +300,7 @@
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     remoteVideoEl().srcObject = null;
     localVideoEl().srcObject = null;
-    callScreenEl().classList.add("hidden");
+    callScreenEl().style.display = "none";
   }
 
   function toggleMute() {
@@ -364,7 +328,7 @@
     el.play();
   }
 
-  // Helper
+  // Shortcuts
   const emailEl = () => document.getElementById("email");
   const passwordEl = () => document.getElementById("password");
   const keepLoggedEl = () => document.getElementById("keepLogged");
@@ -372,9 +336,9 @@
   const authSectionEl = () => document.getElementById("authSection");
   const appSectionEl = () => document.getElementById("appSection");
   const callScreenEl = () => document.getElementById("callScreen");
-  const searchBoxEl = () => document.getElementById("searchBox");
   const usersEl = () => document.getElementById("users");
   const recentEl = () => document.getElementById("recent");
+  const searchBoxEl = () => document.getElementById("searchBox");
   const callFromEl = () => document.getElementById("callFrom");
   const incomingEl = () => document.getElementById("incoming");
   const localVideoEl = () => document.getElementById("localVideo");
