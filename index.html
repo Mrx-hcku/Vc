@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>VC App</title>
+  <title>Video Call App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #101010;
+      background: #111;
       color: white;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
     }
     header {
       background: #0a84ff;
-      padding: 12px;
+      padding: 16px;
       text-align: center;
       font-size: 20px;
       font-weight: bold;
@@ -34,6 +35,14 @@
       color: white;
       font-weight: bold;
     }
+    #authSection {
+      max-width: 320px;
+      margin: 50px auto;
+      text-align: center;
+    }
+    #appSection.hidden, #callScreen.hidden {
+      display: none;
+    }
     #users li, #recent li {
       background: #1e1e1e;
       padding: 10px;
@@ -49,18 +58,6 @@
       border-radius: 50%;
       margin-right: 10px;
     }
-    video {
-      width: 100%;
-      border-radius: 10px;
-      margin: 8px 0;
-      background: black;
-    }
-    .controls {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 8px;
-    }
-    .hidden { display: none; }
     #incoming {
       background: #222;
       padding: 10px;
@@ -68,13 +65,44 @@
       margin: 8px 0;
       display: none;
     }
+    video {
+      width: 100%;
+      border-radius: 12px;
+      background: black;
+      margin-bottom: 10px;
+    }
+    #callScreen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 999;
+      padding: 16px;
+    }
+    .call-controls {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 16px;
+    }
+    .call-controls button {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      font-size: 18px;
+    }
+    h3 {
+      margin-top: 24px;
+    }
   </style>
 </head>
 <body>
 
-<header>VC App</header>
+<header>Video Call App</header>
+
 <main>
-  <!-- LOGIN -->
+
+  <!-- Auth UI -->
   <div id="authSection">
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
@@ -84,8 +112,8 @@
     <p id="authMsg" style="color:red"></p>
   </div>
 
-  <!-- HOME -->
-  <div id="homeSection" class="hidden">
+  <!-- App Main UI -->
+  <div id="appSection" class="hidden">
     <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
     <h3>Online Users</h3>
     <ul id="users"></ul>
@@ -100,29 +128,29 @@
     </div>
   </div>
 
-  <!-- CALLING SCREEN -->
+  <!-- Call UI -->
   <div id="callScreen" class="hidden">
-    <h3>On Call with <span id="onCallWith"></span></h3>
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo" autoplay playsinline muted></video>
-    <div class="controls">
-      <button onclick="toggleMute()">Mute</button>
-      <button onclick="toggleSpeaker()">Speaker</button>
-      <button onclick="endCall()">End</button>
+    <div class="call-controls">
+      <button onclick="toggleMute()">🔇</button>
+      <button onclick="toggleSpeaker()">🔊</button>
+      <button onclick="endCall()">❌</button>
     </div>
   </div>
 
   <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
+
 </main>
 
-<!-- Firebase + PeerJS -->
+<!-- Firebase & PeerJS -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
 <script>
-  const config = {
+  const firebaseConfig = {
     apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
     authDomain: "vcall-5f220.firebaseapp.com",
     databaseURL: "https://vcall-5f220-default-rtdb.firebaseio.com",
@@ -132,15 +160,19 @@
     appId: "1:679349443110:web:b44818bb14dffafcec24e7"
   };
 
-  firebase.initializeApp(config);
-  const db = firebase.database(), auth = firebase.auth();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
   const ringtone = document.getElementById("ringtone");
 
-  let username = "", peer = null, localStream = null, currentCall = null, isMuted = false;
+  let username = "", peer = null, currentCall = null, localStream = null;
+  let isMuted = false;
 
   window.onload = () => {
     auth.onAuthStateChanged(user => {
-      if (user && localStorage.getItem("keepLogged")) startApp(user);
+      if (user && localStorage.getItem("keepLogged")) {
+        startApp(user);
+      }
     });
   };
 
@@ -149,7 +181,7 @@
     auth.signInWithEmailAndPassword(email, pass).then(res => {
       if (keepLoggedEl().checked) localStorage.setItem("keepLogged", "1");
       startApp(res.user);
-    }).catch(err => authMsgEl().innerText = err.message);
+    }).catch(e => authMsgEl().innerText = e.message);
   }
 
   function signup() {
@@ -157,37 +189,35 @@
     auth.createUserWithEmailAndPassword(email, pass).then(res => {
       if (keepLoggedEl().checked) localStorage.setItem("keepLogged", "1");
       startApp(res.user);
-    }).catch(err => authMsgEl().innerText = err.message);
+    }).catch(e => authMsgEl().innerText = e.message);
   }
 
   function startApp(user) {
     username = user.email.split("@")[0];
     authSectionEl().classList.add("hidden");
-    homeSectionEl().classList.remove("hidden");
+    appSectionEl().classList.remove("hidden");
 
-    peer = new Peer(username, { host: '0.peerjs.com', port: 443, secure: true });
+    peer = new Peer(username, { host: "0.peerjs.com", port: 443, secure: true });
 
-    peer.on('open', () => {
+    peer.on("open", () => {
       db.ref("users/" + username).set(true);
       db.ref("users/" + username).onDisconnect().remove();
-      loadUsers();
-      loadRecents();
-
       db.ref("calls/" + username).on("value", snap => {
         if (snap.exists()) {
           const caller = snap.val().from;
-          callFromEl().innerHTML = `Call from <b>${caller}</b>`;
+          callFromEl().innerText = `Incoming call from ${caller}`;
           incomingEl().style.display = "block";
           ringtone.play().catch(() => {});
         }
       });
+      loadUsers();
     });
 
     peer.on("call", call => {
       window.pendingCall = call;
     });
 
-    setInterval(() => { loadUsers(); loadRecents(); }, 5000);
+    setInterval(loadUsers, 5000);
   }
 
   function loadUsers() {
@@ -198,21 +228,11 @@
         if (user !== username) {
           const li = document.createElement("li");
           li.innerHTML = `
-            <span><img class="avatar" src="https://ui-avatars.com/api/?name=${user}">${user}</span>
-            <button onclick="startCall('${user}')">Call</button>`;
+            <span><img class="avatar" src="https://ui-avatars.com/api/?name=${user}"> ${user}</span>
+            <button onclick="startCall('${user}')">📞</button>`;
           usersEl().appendChild(li);
         }
       });
-    });
-  }
-
-  function loadRecents() {
-    const recent = JSON.parse(localStorage.getItem("recentCalls") || "[]");
-    recentEl().innerHTML = "";
-    recent.forEach(user => {
-      const li = document.createElement("li");
-      li.innerHTML = `<span><img class="avatar" src="https://ui-avatars.com/api/?name=${user}">${user}</span>`;
-      recentEl().appendChild(li);
     });
   }
 
@@ -224,42 +244,36 @@
     });
   }
 
-  function saveRecent(user) {
-    let recent = JSON.parse(localStorage.getItem("recentCalls") || "[]");
-    if (!recent.includes(user)) recent.unshift(user);
-    recent = recent.slice(0, 5);
-    localStorage.setItem("recentCalls", JSON.stringify(recent));
-    loadRecents();
-  }
-
   function startCall(target) {
-    saveRecent(target);
+    db.ref("recent/" + username + "/" + target).set(true);
     requestMedia().then(stream => {
       localStream = stream;
       showVideo(stream, localVideoEl());
       db.ref("calls/" + target).set({ from: username });
 
       const call = peer.call(target, stream);
-      call.on("stream", remote => showVideo(remote, remoteVideoEl()));
+      call.on("stream", remote => {
+        showVideo(remote, remoteVideoEl());
+      });
       currentCall = call;
-      setCallUI(target);
+      callScreenEl().classList.remove("hidden");
     });
   }
 
   function acceptCall() {
     ringtone.pause(); ringtone.currentTime = 0;
     incomingEl().style.display = "none";
-    const target = callFromEl().innerText.replace("Call from", "").trim();
-    saveRecent(target);
 
     requestMedia().then(stream => {
       localStream = stream;
       showVideo(stream, localVideoEl());
       window.pendingCall.answer(stream);
-      window.pendingCall.on("stream", remote => showVideo(remote, remoteVideoEl()));
+      window.pendingCall.on("stream", remote => {
+        showVideo(remote, remoteVideoEl());
+      });
       currentCall = window.pendingCall;
+      callScreenEl().classList.remove("hidden");
       db.ref("calls/" + username).remove();
-      setCallUI(target);
     });
   }
 
@@ -269,19 +283,12 @@
     db.ref("calls/" + username).remove();
   }
 
-  function setCallUI(name) {
-    homeSectionEl().classList.add("hidden");
-    callScreenEl().classList.remove("hidden");
-    onCallWithEl().innerText = name;
-  }
-
   function endCall() {
     if (currentCall) currentCall.close();
-    if (localStream) localStream.getTracks().forEach(track => track.stop());
-    callScreenEl().classList.add("hidden");
-    homeSectionEl().classList.remove("hidden");
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
     remoteVideoEl().srcObject = null;
     localVideoEl().srcObject = null;
+    callScreenEl().classList.add("hidden");
   }
 
   function toggleMute() {
@@ -309,22 +316,20 @@
     el.play();
   }
 
-  // Elements
+  // Helper
   const emailEl = () => document.getElementById("email");
   const passwordEl = () => document.getElementById("password");
   const keepLoggedEl = () => document.getElementById("keepLogged");
   const authMsgEl = () => document.getElementById("authMsg");
   const authSectionEl = () => document.getElementById("authSection");
-  const homeSectionEl = () => document.getElementById("homeSection");
+  const appSectionEl = () => document.getElementById("appSection");
   const callScreenEl = () => document.getElementById("callScreen");
-  const usersEl = () => document.getElementById("users");
-  const recentEl = () => document.getElementById("recent");
   const searchBoxEl = () => document.getElementById("searchBox");
+  const usersEl = () => document.getElementById("users");
   const callFromEl = () => document.getElementById("callFrom");
   const incomingEl = () => document.getElementById("incoming");
   const localVideoEl = () => document.getElementById("localVideo");
   const remoteVideoEl = () => document.getElementById("remoteVideo");
-  const onCallWithEl = () => document.getElementById("onCallWith");
 </script>
 
 </body>
