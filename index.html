@@ -37,8 +37,9 @@
     }
     #authSection {
       max-width: 320px;
-      margin: 70px auto;
+      margin: 80px auto;
       text-align: center;
+      transition: all 0.3s ease;
     }
     #appSection.hidden, #callScreen.hidden {
       display: none;
@@ -67,7 +68,6 @@
     }
     video {
       width: 100%;
-      max-height: 45vh;
       border-radius: 12px;
       background: black;
       margin-bottom: 10px;
@@ -84,10 +84,7 @@
     .call-controls {
       display: flex;
       justify-content: space-around;
-      position: absolute;
-      bottom: 20px;
-      left: 0; right: 0;
-      padding: 0 20px;
+      margin-top: 16px;
     }
     .call-controls button {
       width: 60px;
@@ -106,7 +103,7 @@
 
 <main>
 
-  <!-- Auth UI -->
+  <!-- Login -->
   <div id="authSection">
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
@@ -116,10 +113,9 @@
     <p id="authMsg" style="color:red"></p>
   </div>
 
-  <!-- App UI -->
+  <!-- Home -->
   <div id="appSection" class="hidden">
     <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
-    
     <h3>Online Users</h3>
     <ul id="users"></ul>
 
@@ -133,7 +129,7 @@
     </div>
   </div>
 
-  <!-- Call UI -->
+  <!-- Call Screen -->
   <div id="callScreen" class="hidden">
     <video id="remoteVideo" autoplay playsinline></video>
     <video id="localVideo" autoplay playsinline muted></video>
@@ -148,7 +144,7 @@
 
 </main>
 
-<!-- Firebase & PeerJS -->
+<!-- Firebase + PeerJS -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -174,30 +170,54 @@
   let isMuted = false;
 
   window.onload = () => {
-    auth.onAuthStateChanged(user => {
-      if (user && localStorage.getItem("keepLogged")) {
-        startApp(user);
-      } else {
-        authSectionEl().classList.remove("hidden");
-        appSectionEl().classList.add("hidden");
-      }
-    });
+    const email = localStorage.getItem("savedEmail");
+    const pass = localStorage.getItem("savedPassword");
+    const keep = localStorage.getItem("keepLogged");
+
+    if (keep === "1" && email && pass) {
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(res => startApp(res.user))
+        .catch(() => showLogin());
+    } else {
+      showLogin();
+    }
   };
 
+  function showLogin() {
+    authSectionEl().classList.remove("hidden");
+    appSectionEl().classList.add("hidden");
+  }
+
   function login() {
-    const email = emailEl().value, pass = passwordEl().value;
-    auth.signInWithEmailAndPassword(email, pass).then(res => {
-      if (keepLoggedEl().checked) localStorage.setItem("keepLogged", "1");
-      startApp(res.user);
-    }).catch(e => authMsgEl().innerText = e.message);
+    const email = emailEl().value.trim();
+    const pass = passwordEl().value.trim();
+
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(res => {
+        if (keepLoggedEl().checked) {
+          localStorage.setItem("keepLogged", "1");
+          localStorage.setItem("savedEmail", email);
+          localStorage.setItem("savedPassword", pass);
+        }
+        startApp(res.user);
+      })
+      .catch(e => authMsgEl().innerText = e.message);
   }
 
   function signup() {
-    const email = emailEl().value, pass = passwordEl().value;
-    auth.createUserWithEmailAndPassword(email, pass).then(res => {
-      if (keepLoggedEl().checked) localStorage.setItem("keepLogged", "1");
-      startApp(res.user);
-    }).catch(e => authMsgEl().innerText = e.message);
+    const email = emailEl().value.trim();
+    const pass = passwordEl().value.trim();
+
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(res => {
+        if (keepLoggedEl().checked) {
+          localStorage.setItem("keepLogged", "1");
+          localStorage.setItem("savedEmail", email);
+          localStorage.setItem("savedPassword", pass);
+        }
+        startApp(res.user);
+      })
+      .catch(e => authMsgEl().innerText = e.message);
   }
 
   function startApp(user) {
@@ -210,6 +230,7 @@
     peer.on("open", () => {
       db.ref("users/" + username).set(true);
       db.ref("users/" + username).onDisconnect().remove();
+
       db.ref("calls/" + username).on("value", snap => {
         if (snap.exists()) {
           const caller = snap.val().from;
@@ -218,6 +239,7 @@
           ringtone.play().catch(() => {});
         }
       });
+
       loadUsers();
       loadRecentCalls();
     });
@@ -252,11 +274,11 @@
     db.ref("recent/" + username).once("value", snap => {
       recentEl().innerHTML = "";
       snap.forEach(child => {
-        const user = child.key;
+        const name = child.key;
         const li = document.createElement("li");
         li.innerHTML = `
-          <span><img class="avatar" src="https://ui-avatars.com/api/?name=${user}"> ${user}</span>
-          <button onclick="startCall('${user}')">📞</button>`;
+          <span><img class="avatar" src="https://ui-avatars.com/api/?name=${name}"> ${name}</span>
+          <button onclick="startCall('${name}')">📞</button>`;
         recentEl().appendChild(li);
       });
     });
@@ -342,7 +364,7 @@
     el.play();
   }
 
-  // Helpers
+  // Helper
   const emailEl = () => document.getElementById("email");
   const passwordEl = () => document.getElementById("password");
   const keepLoggedEl = () => document.getElementById("keepLogged");
@@ -360,4 +382,4 @@
 </script>
 
 </body>
-  </html>
+</html>
