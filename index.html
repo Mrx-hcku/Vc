@@ -35,11 +35,6 @@
       color: white;
       font-weight: bold;
     }
-    #authSection {
-      max-width: 320px;
-      margin: 50px auto;
-      text-align: center;
-    }
     #appSection, #callScreen { display: none; }
     #users li, #recent li {
       background: #1e1e1e;
@@ -99,16 +94,6 @@
 <header>Video Call App</header>
 
 <main>
-  <!-- Login UI -->
-  <div id="authSection">
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <label><input type="checkbox" id="keepLogged"> Keep me logged in</label>
-    <button onclick="login()">Login</button>
-    <button onclick="signup()">Sign Up</button>
-    <p id="authMsg" style="color:red"></p>
-  </div>
-
   <!-- App UI -->
   <div id="appSection">
     <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
@@ -163,34 +148,22 @@
   let username = "", peer = null, currentCall = null, localStream = null;
   let isMuted = false;
 
-  // Auto login if session exists
   window.onload = () => {
-    if (localStorage.getItem("loggedIn") === "true") {
-      auth.onAuthStateChanged(user => {
-        if (user) startApp(user);
-      });
+    if (localStorage.getItem("loggedIn") !== "true") {
+      window.location.href = "auth.html";
+      return;
     }
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        startApp(user);
+      } else {
+        window.location.href = "auth.html";
+      }
+    });
   };
-
-  function login() {
-    const email = emailEl().value, pass = passwordEl().value;
-    auth.signInWithEmailAndPassword(email, pass).then(res => {
-      if (keepLoggedEl().checked) localStorage.setItem("loggedIn", "true");
-      startApp(res.user);
-    }).catch(e => authMsgEl().innerText = e.message);
-  }
-
-  function signup() {
-    const email = emailEl().value, pass = passwordEl().value;
-    auth.createUserWithEmailAndPassword(email, pass).then(res => {
-      if (keepLoggedEl().checked) localStorage.setItem("loggedIn", "true");
-      startApp(res.user);
-    }).catch(e => authMsgEl().innerText = e.message);
-  }
 
   function startApp(user) {
     username = user.email.split("@")[0];
-    authSectionEl().style.display = "none";
     appSectionEl().style.display = "block";
 
     peer = new Peer(username, { host: "0.peerjs.com", port: 443, secure: true });
@@ -329,11 +302,6 @@
   }
 
   // Shortcuts
-  const emailEl = () => document.getElementById("email");
-  const passwordEl = () => document.getElementById("password");
-  const keepLoggedEl = () => document.getElementById("keepLogged");
-  const authMsgEl = () => document.getElementById("authMsg");
-  const authSectionEl = () => document.getElementById("authSection");
   const appSectionEl = () => document.getElementById("appSection");
   const callScreenEl = () => document.getElementById("callScreen");
   const usersEl = () => document.getElementById("users");
@@ -346,4 +314,4 @@
 </script>
 
 </body>
-</html>
+  </html>
