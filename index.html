@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -9,22 +10,22 @@
       background: #111;
       color: white;
       font-family: sans-serif;
-      padding: 0 16px;
+      padding: 16px;
     }
     header {
       background: #0a84ff;
-      padding: 16px;
       text-align: center;
+      padding: 16px;
       font-size: 20px;
       font-weight: bold;
     }
-    h3 { margin-top: 24px; }
+    h3 { margin-top: 20px; }
     input, button {
       width: 100%;
       padding: 12px;
-      margin: 8px 0;
-      font-size: 16px;
+      margin-top: 10px;
       border-radius: 8px;
+      font-size: 16px;
       border: none;
     }
     button {
@@ -34,7 +35,7 @@
     }
     ul { list-style: none; padding: 0; }
     li {
-      background: #1e1e1e;
+      background: #1f1f1f;
       margin: 6px 0;
       padding: 10px;
       border-radius: 8px;
@@ -46,18 +47,19 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      margin-right: 8px;
+      margin-right: 10px;
     }
     #incoming {
       background: #222;
+      margin-top: 20px;
       padding: 12px;
-      margin-top: 10px;
       border-radius: 8px;
       display: none;
     }
   </style>
 </head>
 <body>
+
   <header>Video Call App</header>
 
   <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
@@ -76,7 +78,6 @@
 
   <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
 
-  <!-- Firebase & PeerJS -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -104,28 +105,25 @@
     const incomingEl = document.getElementById("incoming");
     const callFromEl = document.getElementById("callFrom");
 
-    let username = "";
-    let peer = null;
-    let localStream = null;
-    let currentCall = null;
+    let username = "", peer = null, localStream = null, currentCall = null;
 
     window.onload = () => {
       if (localStorage.getItem("loggedIn") !== "true") {
-        location.href = "auth.html";
+        window.location.href = "auth.html";
         return;
       }
 
       auth.onAuthStateChanged(user => {
         if (user) {
           username = user.email.split("@")[0];
-          initApp();
+          initializePeer();
         } else {
-          location.href = "auth.html";
+          window.location.href = "auth.html";
         }
       });
     };
 
-    function initApp() {
+    function initializePeer() {
       peer = new Peer(username, { host: "0.peerjs.com", port: 443, secure: true });
 
       peer.on("open", () => {
@@ -137,9 +135,9 @@
         db.ref("calls/" + username).on("value", snap => {
           if (snap.exists()) {
             const caller = snap.val().from;
-            callFromEl.textContent = `Incoming call from ${caller}`;
-            incomingEl.style.display = "block";
+            callFromEl.innerText = `Incoming call from ${caller}`;
             ringtone.play().catch(() => {});
+            incomingEl.style.display = "block";
           }
         });
       });
@@ -152,6 +150,60 @@
         loadUsers();
         loadRecent();
       }, 5000);
+    }
+
+    function requestMedia() {
+      return navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false
+        }
+      });
+    }
+
+    function startCall(target) {
+      db.ref("recent/" + username + "/" + target).set(true);
+      requestMedia().then(stream => {
+        localStream = stream;
+        const call = peer.call(target, stream);
+
+        call.on("stream", remote => {
+          window.localStream = stream;
+          window.remoteStream = remote;
+          window.currentCall = call;
+          window.open("call.html", "_blank", "fullscreen=yes");
+        });
+
+        currentCall = call;
+        db.ref("calls/" + target).set({ from: username });
+      });
+    }
+
+    function acceptCall() {
+      ringtone.pause(); ringtone.currentTime = 0;
+      incomingEl.style.display = "none";
+
+      requestMedia().then(stream => {
+        localStream = stream;
+        window.pendingCall.answer(stream);
+
+        window.pendingCall.on("stream", remote => {
+          window.localStream = stream;
+          window.remoteStream = remote;
+          window.currentCall = window.pendingCall;
+          window.open("call.html", "_blank", "fullscreen=yes");
+        });
+
+        db.ref("calls/" + username).remove();
+      });
+    }
+
+    function rejectCall() {
+      ringtone.pause(); ringtone.currentTime = 0;
+      incomingEl.style.display = "none";
+      db.ref("calls/" + username).remove();
     }
 
     function loadUsers() {
@@ -190,59 +242,6 @@
         const name = li.textContent.toLowerCase();
         li.style.display = name.includes(val) ? "flex" : "none";
       });
-    }
-
-    function requestMedia() {
-      return navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: false
-        }
-      });
-    }
-
-    function startCall(target) {
-      db.ref("recent/" + username + "/" + target).set(true);
-      requestMedia().then(stream => {
-        localStream = stream;
-        const call = peer.call(target, stream);
-
-        call.on("stream", remote => {
-          window.localStream = stream;
-          window.remoteStream = remote;
-          window.currentCall = call;
-          window.open("call.html", "_blank", "fullscreen=yes");
-        });
-
-        currentCall = call;
-      });
-    }
-
-    function acceptCall() {
-      ringtone.pause(); ringtone.currentTime = 0;
-      incomingEl.style.display = "none";
-
-      requestMedia().then(stream => {
-        localStream = stream;
-        window.pendingCall.answer(stream);
-
-        window.pendingCall.on("stream", remote => {
-          window.localStream = stream;
-          window.remoteStream = remote;
-          window.currentCall = window.pendingCall;
-          window.open("call.html", "_blank", "fullscreen=yes");
-        });
-
-        db.ref("calls/" + username).remove();
-      });
-    }
-
-    function rejectCall() {
-      ringtone.pause(); ringtone.currentTime = 0;
-      incomingEl.style.display = "none";
-      db.ref("calls/" + username).remove();
     }
   </script>
 </body>
