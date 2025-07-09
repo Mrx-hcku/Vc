@@ -1,151 +1,192 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Call Screen</title>
+  <title>Call - VCall</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: 100%; height: 100%;
-      background: black;
+
+    body {
+      background: #000;
       overflow: hidden;
+      font-family: sans-serif;
     }
+
     #localVideo, #remoteVideo {
       position: absolute;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
-      width: 100%; height: 100%;
-      z-index: 1;
-      border-radius: 0;
     }
+
     #remoteVideo.small {
-      width: 30%;
-      height: 25%;
-      top: 16px;
+      width: 120px;
+      height: 160px;
       right: 16px;
+      top: 16px;
       z-index: 2;
       border-radius: 12px;
-      box-shadow: 0 0 10px rgba(255,255,255,0.3);
-      cursor: pointer;
     }
+
     #localVideo.small {
-      width: 30%;
-      height: 25%;
-      top: 16px;
+      width: 120px;
+      height: 160px;
       right: 16px;
+      top: 16px;
       z-index: 2;
       border-radius: 12px;
-      box-shadow: 0 0 10px rgba(255,255,255,0.3);
-      cursor: pointer;
     }
+
     #controls {
       position: absolute;
-      bottom: 30px;
+      bottom: 20px;
       width: 100%;
       display: flex;
       justify-content: center;
       gap: 20px;
-      z-index: 5;
+      z-index: 3;
     }
+
     .btn {
-      background: rgba(255,255,255,0.1);
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      font-size: 22px;
+      background: #222;
+      color: white;
+      border: none;
+    }
+
+    .btn.end { background: red; }
+
+    #switchCamera {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 3;
+      background: rgba(255, 255, 255, 0.2);
       color: white;
       border: none;
       border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      font-size: 22px;
-    }
-    .end-btn {
-      background: red;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
 
-<video id="localVideo" autoplay playsinline muted></video>
-<video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay playsinline></video>
 
-<div id="controls">
-  <button class="btn" onclick="toggleMute()">🔇</button>
-  <button class="btn" onclick="toggleSpeaker()">🔊</button>
-  <button class="btn" onclick="switchCamera()">🔁</button>
-  <button class="btn end-btn" onclick="endCall()">❌</button>
-</div>
+  <button id="switchCamera">🔄</button>
 
-<script>
-  let localVideo = document.getElementById("localVideo");
-  let remoteVideo = document.getElementById("remoteVideo");
-  let streams = window.opener.getCallStreams();
-  let currentCall = window.opener.getCurrentCall();
+  <div id="controls">
+    <button class="btn" onclick="toggleSpeaker()">🔊</button>
+    <button class="btn" onclick="toggleMute()">🔇</button>
+    <button class="btn end" onclick="endCall()">❌</button>
+  </div>
 
-  let local = streams.local;
-  let remote = streams.remote;
-  let isMuted = false;
-  let usingFront = true;
+  <script>
+    let localStream = null;
+    let remoteStream = null;
+    let currentCall = null;
+    let isMuted = false;
+    let speakerEnabled = true;
+    let usingFront = true;
 
-  // Set initial layout: local full, remote small
-  localVideo.srcObject = local;
-  remoteVideo.srcObject = remote;
-  remoteVideo.classList.add("small");
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
 
-  // Tap to swap
-  remoteVideo.onclick = () => {
-    remoteVideo.classList.remove("small");
-    localVideo.classList.add("small");
-    swapVideos();
-  };
-  localVideo.onclick = () => {
-    localVideo.classList.remove("small");
-    remoteVideo.classList.add("small");
-    swapVideos();
-  };
+    document.addEventListener("DOMContentLoaded", () => {
+      let tries = 0;
+      function tryInit() {
+        if (!window.opener || !window.opener.localStream || !window.opener.remoteStream) {
+          if (tries++ < 10) return setTimeout(tryInit, 300);
+          alert("Video streams not available");
+          return;
+        }
 
-  function swapVideos() {
-    const localZ = localVideo.style.zIndex;
-    const remoteZ = remoteVideo.style.zIndex;
-    localVideo.style.zIndex = remoteZ;
-    remoteVideo.style.zIndex = localZ;
-  }
+        localStream = window.opener.localStream;
+        remoteStream = window.opener.remoteStream;
+        currentCall = window.opener.currentCall;
 
-  function toggleMute() {
-    isMuted = !isMuted;
-    local.getAudioTracks().forEach(t => t.enabled = !isMuted);
-  }
+        // Initial view: local fullscreen, remote small
+        localVideo.classList.remove("small");
+        remoteVideo.classList.add("small");
 
-  function toggleSpeaker() {
-    remoteVideo.muted = !remoteVideo.muted;
-  }
+        localVideo.srcObject = localStream;
+        remoteVideo.srcObject = remoteStream;
 
-  function endCall() {
-    window.opener.endCallFromPopup();
-    window.close();
-  }
-
-  // Switch front/rear camera
-  async function switchCamera() {
-    usingFront = !usingFront;
-    const facingMode = usingFront ? "user" : "environment";
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false
+        localVideo.play();
+        remoteVideo.play();
       }
+
+      tryInit();
     });
 
-    // Replace video tracks in call
-    const videoTrack = newStream.getVideoTracks()[0];
-    const sender = currentCall.peerConnection.getSenders().find(s => s.track.kind === "video");
-    if (sender) sender.replaceTrack(videoTrack);
+    // Tap to toggle video views
+    localVideo.addEventListener("click", () => toggleView(true));
+    remoteVideo.addEventListener("click", () => toggleView(false));
 
-    // Update local stream and video
-    local.getTracks().forEach(track => track.stop());
-    localVideo.srcObject = newStream;
-    window.opener.localStream = newStream;
-    local = newStream;
-  }
-</script>
+    function toggleView(showLocalFull) {
+      if (showLocalFull) {
+        localVideo.classList.remove("small");
+        remoteVideo.classList.add("small");
+      } else {
+        remoteVideo.classList.remove("small");
+        localVideo.classList.add("small");
+      }
+    }
 
+    function toggleMute() {
+      isMuted = !isMuted;
+      localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+    }
+
+    function toggleSpeaker() {
+      speakerEnabled = !speakerEnabled;
+      remoteVideo.muted = !speakerEnabled;
+    }
+
+    function endCall() {
+      if (currentCall) currentCall.close();
+      if (localStream) localStream.getTracks().forEach(t => t.stop());
+      window.close();
+    }
+
+    document.getElementById("switchCamera").onclick = () => {
+      // Get current video track
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (!videoTrack) return;
+
+      // Get list of devices
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        const videoDevices = devices.filter(d => d.kind === "videoinput");
+        if (videoDevices.length < 2) return alert("Only one camera found");
+
+        const newDeviceId = videoDevices.find(d => {
+          return d.deviceId !== videoTrack.getSettings().deviceId;
+        }).deviceId;
+
+        navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: newDeviceId } },
+          audio: true
+        }).then(stream => {
+          const newVideoTrack = stream.getVideoTracks()[0];
+
+          currentCall.peerConnection.getSenders().forEach(sender => {
+            if (sender.track.kind === "video") {
+              sender.replaceTrack(newVideoTrack);
+            }
+          });
+
+          localStream.getTracks().forEach(t => t.stop());
+          localStream = stream;
+          localVideo.srcObject = stream;
+        });
+      });
+    };
+  </script>
 </body>
 </html>
