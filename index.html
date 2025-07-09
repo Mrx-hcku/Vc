@@ -19,9 +19,7 @@
       font-size: 20px;
       font-weight: bold;
     }
-    main {
-      padding: 16px;
-    }
+    main { padding: 16px; }
     input, button {
       width: 100%;
       padding: 12px;
@@ -35,7 +33,7 @@
       color: white;
       font-weight: bold;
     }
-    #appSection, #callScreen { display: none; }
+    #appSection { display: none; }
     #users li, #recent li {
       background: #1e1e1e;
       padding: 10px;
@@ -58,35 +56,6 @@
       margin: 8px 0;
       display: none;
     }
-    video {
-      width: 100%;
-      border-radius: 12px;
-      background: black;
-      margin-bottom: 10px;
-    }
-    #callScreen {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      z-index: 999;
-      padding: 16px;
-    }
-    .call-controls {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 16px;
-    }
-    .call-controls button {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      font-size: 18px;
-    }
-    h3 {
-      margin-top: 24px;
-    }
   </style>
 </head>
 <body>
@@ -94,9 +63,9 @@
 <header>Video Call App</header>
 
 <main>
-  <!-- App UI -->
   <div id="appSection">
     <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
+
     <h3>Online Users</h3>
     <ul id="users"></ul>
 
@@ -107,17 +76,6 @@
       <p id="callFrom"></p>
       <button onclick="acceptCall()">Accept</button>
       <button onclick="rejectCall()">Reject</button>
-    </div>
-  </div>
-
-  <!-- Call UI -->
-  <div id="callScreen">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <video id="localVideo" autoplay playsinline muted></video>
-    <div class="call-controls">
-      <button onclick="toggleMute()">🔇</button>
-      <button onclick="toggleSpeaker()">🔊</button>
-      <button onclick="endCall()">❌</button>
     </div>
   </div>
 
@@ -145,8 +103,19 @@
   const auth = firebase.auth();
   const ringtone = document.getElementById("ringtone");
 
-  let username = "", peer = null, currentCall = null, localStream = null;
+  let username = "", peer = null, currentCall = null;
+  let localStream = null, remoteStream = null;
   let isMuted = false;
+
+  // Expose streams and call for call.html
+  window.getCallStreams = () => ({ local: localStream, remote: remoteStream });
+  window.getCurrentCall = () => currentCall;
+  window.endCallFromPopup = () => {
+    if (currentCall) currentCall.close();
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    remoteStream = null;
+    currentCall = null;
+  };
 
   window.onload = () => {
     if (localStorage.getItem("loggedIn") !== "true") {
@@ -154,11 +123,8 @@
       return;
     }
     auth.onAuthStateChanged(user => {
-      if (user) {
-        startApp(user);
-      } else {
-        window.location.href = "auth.html";
-      }
+      if (user) startApp(user);
+      else window.location.href = "auth.html";
     });
   };
 
@@ -237,13 +203,14 @@
     db.ref("recent/" + username + "/" + target).set(true);
     requestMedia().then(stream => {
       localStream = stream;
-      showVideo(stream, localVideoEl());
       db.ref("calls/" + target).set({ from: username });
 
       const call = peer.call(target, stream);
-      call.on("stream", remote => showVideo(remote, remoteVideoEl()));
-      currentCall = call;
-      callScreenEl().style.display = "block";
+      call.on("stream", remote => {
+        remoteStream = remote;
+        currentCall = call;
+        window.open("call.html", "_blank");
+      });
     });
   }
 
@@ -253,12 +220,13 @@
 
     requestMedia().then(stream => {
       localStream = stream;
-      showVideo(stream, localVideoEl());
       window.pendingCall.answer(stream);
-      window.pendingCall.on("stream", remote => showVideo(remote, remoteVideoEl()));
-      currentCall = window.pendingCall;
-      db.ref("calls/" + username).remove();
-      callScreenEl().style.display = "block";
+      window.pendingCall.on("stream", remote => {
+        remoteStream = remote;
+        currentCall = window.pendingCall;
+        db.ref("calls/" + username).remove();
+        window.open("call.html", "_blank");
+      });
     });
   }
 
@@ -266,23 +234,6 @@
     ringtone.pause(); ringtone.currentTime = 0;
     incomingEl().style.display = "none";
     db.ref("calls/" + username).remove();
-  }
-
-  function endCall() {
-    if (currentCall) currentCall.close();
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    remoteVideoEl().srcObject = null;
-    localVideoEl().srcObject = null;
-    callScreenEl().style.display = "none";
-  }
-
-  function toggleMute() {
-    isMuted = !isMuted;
-    localStream.getAudioTracks()[0].enabled = !isMuted;
-  }
-
-  function toggleSpeaker() {
-    remoteVideoEl().muted = !remoteVideoEl().muted;
   }
 
   function requestMedia() {
@@ -296,22 +247,14 @@
     });
   }
 
-  function showVideo(stream, el) {
-    el.srcObject = stream;
-    el.play();
-  }
-
   // Shortcuts
   const appSectionEl = () => document.getElementById("appSection");
-  const callScreenEl = () => document.getElementById("callScreen");
   const usersEl = () => document.getElementById("users");
   const recentEl = () => document.getElementById("recent");
   const searchBoxEl = () => document.getElementById("searchBox");
   const callFromEl = () => document.getElementById("callFrom");
   const incomingEl = () => document.getElementById("incoming");
-  const localVideoEl = () => document.getElementById("localVideo");
-  const remoteVideoEl = () => document.getElementById("remoteVideo");
 </script>
 
 </body>
-  </html>
+</html>
