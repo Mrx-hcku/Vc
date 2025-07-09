@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Call Screen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: black;
+      overflow: hidden;
+    }
+    #localVideo, #remoteVideo {
+      position: absolute;
+      object-fit: cover;
+      width: 100%; height: 100%;
+      z-index: 1;
+      border-radius: 0;
+    }
+    #remoteVideo.small {
+      width: 30%;
+      height: 25%;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+      cursor: pointer;
+    }
+    #localVideo.small {
+      width: 30%;
+      height: 25%;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+      cursor: pointer;
+    }
+    #controls {
+      position: absolute;
+      bottom: 30px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      z-index: 5;
+    }
+    .btn {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 22px;
+    }
+    .end-btn {
+      background: red;
+    }
+  </style>
+</head>
+<body>
+
+<video id="localVideo" autoplay playsinline muted></video>
+<video id="remoteVideo" autoplay playsinline></video>
+
+<div id="controls">
+  <button class="btn" onclick="toggleMute()">🔇</button>
+  <button class="btn" onclick="toggleSpeaker()">🔊</button>
+  <button class="btn" onclick="switchCamera()">🔁</button>
+  <button class="btn end-btn" onclick="endCall()">❌</button>
+</div>
+
+<script>
+  let localVideo = document.getElementById("localVideo");
+  let remoteVideo = document.getElementById("remoteVideo");
+  let streams = window.opener.getCallStreams();
+  let currentCall = window.opener.getCurrentCall();
+
+  let local = streams.local;
+  let remote = streams.remote;
+  let isMuted = false;
+  let usingFront = true;
+
+  // Set initial layout: local full, remote small
+  localVideo.srcObject = local;
+  remoteVideo.srcObject = remote;
+  remoteVideo.classList.add("small");
+
+  // Tap to swap
+  remoteVideo.onclick = () => {
+    remoteVideo.classList.remove("small");
+    localVideo.classList.add("small");
+    swapVideos();
+  };
+  localVideo.onclick = () => {
+    localVideo.classList.remove("small");
+    remoteVideo.classList.add("small");
+    swapVideos();
+  };
+
+  function swapVideos() {
+    const localZ = localVideo.style.zIndex;
+    const remoteZ = remoteVideo.style.zIndex;
+    localVideo.style.zIndex = remoteZ;
+    remoteVideo.style.zIndex = localZ;
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    local.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  }
+
+  function toggleSpeaker() {
+    remoteVideo.muted = !remoteVideo.muted;
+  }
+
+  function endCall() {
+    window.opener.endCallFromPopup();
+    window.close();
+  }
+
+  // Switch front/rear camera
+  async function switchCamera() {
+    usingFront = !usingFront;
+    const facingMode = usingFront ? "user" : "environment";
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false
+      }
+    });
+
+    // Replace video tracks in call
+    const videoTrack = newStream.getVideoTracks()[0];
+    const sender = currentCall.peerConnection.getSenders().find(s => s.track.kind === "video");
+    if (sender) sender.replaceTrack(videoTrack);
+
+    // Update local stream and video
+    local.getTracks().forEach(track => track.stop());
+    localVideo.srcObject = newStream;
+    window.opener.localStream = newStream;
+    local = newStream;
+  }
+</script>
+
+</body>
+</html>
