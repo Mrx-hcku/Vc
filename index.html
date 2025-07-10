@@ -1,55 +1,188 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <title>Vcall</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <style>
-    /* same styles as before, unchanged */
-    * { box-sizing: border-box; }
-    body { background: #111; color: white; font-family: sans-serif; margin: 0; padding: 0; }
-    header { background: #0a84ff; padding: 16px; text-align: center; font-size: 20px; font-weight: bold; }
-    main { padding: 16px; }
-    input, button {
-      width: 100%; padding: 12px; margin: 8px 0;
-      border-radius: 8px; border: none; font-size: 16px;
+    * {
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      user-select: none;
+      margin: 0;
+      padding: 0;
     }
-    button { background: #0a84ff; color: white; font-weight: bold; }
-    #appSection, #callScreen { display: none; }
-    #users li, #recent li {
-      background: #1e1e1e; padding: 10px; margin: 6px 0;
-      border-radius: 8px; display: flex;
-      justify-content: space-between; align-items: center;
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #000;
+      color: #fff;
+      height: 100vh;
+      overflow-x: hidden;
     }
-    .avatar { width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; }
+
+    header {
+      background: #0a84ff;
+      padding: 20px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    main {
+      padding: 16px;
+    }
+
+    #searchBox {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      background-color: #1a1a1a;
+      color: #fff;
+      margin-bottom: 20px;
+      outline: none;
+      box-shadow: inset 0 0 5px #000;
+      transition: 0.3s;
+    }
+
+    #searchBox::placeholder {
+      color: #888;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    #onlineUsers {
+      display: flex;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      gap: 12px;
+    }
+
+    .user-bubble {
+      flex: 0 0 auto;
+      background: #1e1e1e;
+      padding: 8px;
+      border-radius: 50%;
+      text-align: center;
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: 12px;
+      transition: transform 0.2s ease;
+    }
+
+    .user-bubble:hover {
+      transform: scale(1.1);
+    }
+
+    .user-bubble img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      margin-bottom: 4px;
+    }
+
+    #noUsers {
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      padding: 20px 0;
+      display: none;
+    }
+
+    .recent-item {
+      background: #1e1e1e;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+    }
+
+    .recent-item .info {
+      display: flex;
+      align-items: center;
+    }
+
+    .recent-item img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+
+    .recent-item button {
+      background: #0a84ff;
+      border: none;
+      color: white;
+      font-size: 18px;
+      padding: 10px;
+      border-radius: 12px;
+    }
+
     #incoming {
-      background: #222; padding: 10px; border-radius: 8px;
-      margin: 8px 0; display: none;
+      background: #222;
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 16px;
+      display: none;
     }
-    video { width: 100%; border-radius: 12px; background: black; margin-bottom: 10px; }
+
+    #incoming button {
+      width: 48%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      margin: 6px 1%;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 12px;
+      background: black;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
-<header>Video Call App</header>
+
+<header>Vcall</header>
+
 <main>
-  <div id="appSection">
-    <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()">
+  <div id="appSection" style="display: none;">
+    <input type="text" id="searchBox" placeholder="Search users..." oninput="filterUsers()" autocomplete="off">
+
     <h3>Online Users</h3>
-    <ul id="users"></ul>
+    <div id="onlineUsers"></div>
+    <div id="noUsers">No users found</div>
 
     <h3>Recent Calls</h3>
-    <ul id="recent"></ul>
+    <div id="recent"></div>
 
     <div id="incoming">
       <p id="callFrom"></p>
-      <button onclick="acceptCall()">Accept</button>
-      <button onclick="rejectCall()">Reject</button>
+      <div style="display: flex; justify-content: space-between;">
+        <button onclick="acceptCall()" style="background: #2ecc71;">Accept</button>
+        <button onclick="rejectCall()" style="background: #e74c3c;">Reject</button>
+      </div>
     </div>
   </div>
 
   <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
 </main>
 
+<!-- Firebase + PeerJS -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -86,7 +219,7 @@ window.onload = () => {
 
 function startApp(user) {
   username = user.email.split("@")[0];
-  appSectionEl().style.display = "block";
+  document.getElementById("appSection").style.display = "block";
 
   peer = new Peer(username, { host: "0.peerjs.com", port: 443, secure: true });
 
@@ -97,8 +230,8 @@ function startApp(user) {
     db.ref("calls/" + username).on("value", snap => {
       if (snap.exists()) {
         const caller = snap.val().from;
-        callFromEl().innerText = `Incoming call from ${caller}`;
-        incomingEl().style.display = "block";
+        document.getElementById("callFrom").innerText = `Incoming call from ${caller}`;
+        document.getElementById("incoming").style.display = "block";
         ringtone.play().catch(() => {});
       }
     });
@@ -119,38 +252,61 @@ function startApp(user) {
 
 function loadUsers() {
   db.ref("users").once("value", snap => {
-    usersEl().innerHTML = "";
+    const container = document.getElementById("onlineUsers");
+    container.innerHTML = "";
+    let hasUsers = false;
+
     snap.forEach(child => {
       const user = child.key;
       if (user !== username) {
-        const li = document.createElement("li");
-        li.innerHTML = `<span><img class="avatar" src="https://ui-avatars.com/api/?name=${user}"> ${user}</span>
-                        <button onclick="startCall('${user}')">📞</button>`;
-        usersEl().appendChild(li);
+        const div = document.createElement("div");
+        div.className = "user-bubble";
+        div.innerHTML = `<img src="https://ui-avatars.com/api/?name=${user}"><div>${user}</div>`;
+        div.onclick = () => startCall(user);
+        container.appendChild(div);
+        hasUsers = true;
       }
     });
+
+    filterUsers(); // reapply filter after refresh
   });
 }
 
 function loadRecent() {
   db.ref("recent/" + username).once("value", snap => {
-    recentEl().innerHTML = "";
+    const container = document.getElementById("recent");
+    container.innerHTML = "";
     snap.forEach(child => {
       const name = child.key;
-      const li = document.createElement("li");
-      li.innerHTML = `<span><img class="avatar" src="https://ui-avatars.com/api/?name=${name}"> ${name}</span>
-                      <button onclick="startCall('${name}')">📞</button>`;
-      recentEl().appendChild(li);
+      const div = document.createElement("div");
+      div.className = "recent-item";
+      div.innerHTML = `<div class="info">
+                         <img src="https://ui-avatars.com/api/?name=${name}">
+                         <div>${name}</div>
+                       </div>
+                       <button onclick="startCall('${name}')">📞</button>`;
+      container.appendChild(div);
     });
   });
 }
 
 function filterUsers() {
-  const val = searchBoxEl().value.toLowerCase();
-  [...usersEl().children].forEach(li => {
-    const name = li.textContent.toLowerCase();
-    li.style.display = name.includes(val) ? "flex" : "none";
-  });
+  const val = document.getElementById("searchBox").value.toLowerCase();
+  const container = document.getElementById("onlineUsers");
+  const users = container.children;
+  let anyVisible = false;
+
+  for (let el of users) {
+    const name = el.innerText.toLowerCase();
+    if (name.includes(val)) {
+      el.style.display = "flex";
+      anyVisible = true;
+    } else {
+      el.style.display = "none";
+    }
+  }
+
+  document.getElementById("noUsers").style.display = anyVisible ? "none" : "block";
 }
 
 function startCall(target) {
@@ -159,40 +315,35 @@ function startCall(target) {
     window.localStream = stream;
     const call = peer.call(target, stream);
     window.currentCall = call;
-    window.remoteStream = null;
 
     call.on("stream", remote => {
       window.remoteStream = remote;
     });
 
-    const win = window.open("call.html", "_blank");
+    window.open("call.html", "_blank");
     db.ref("calls/" + target).set({ from: username });
   });
 }
 
 function acceptCall() {
   ringtone.pause(); ringtone.currentTime = 0;
-  incomingEl().style.display = "none";
-
+  document.getElementById("incoming").style.display = "none";
   requestMedia().then(stream => {
     window.localStream = stream;
     const call = window.pendingCall;
     call.answer(stream);
     window.currentCall = call;
-    window.remoteStream = null;
-
     call.on("stream", remote => {
       window.remoteStream = remote;
     });
-
-    const win = window.open("call.html", "_blank");
+    window.open("call.html", "_blank");
     db.ref("calls/" + username).remove();
   });
 }
 
 function rejectCall() {
   ringtone.pause(); ringtone.currentTime = 0;
-  incomingEl().style.display = "none";
+  document.getElementById("incoming").style.display = "none";
   db.ref("calls/" + username).remove();
 }
 
@@ -206,14 +357,7 @@ function requestMedia() {
     }
   });
 }
-
-// Shortcut helpers
-const appSectionEl = () => document.getElementById("appSection");
-const usersEl = () => document.getElementById("users");
-const recentEl = () => document.getElementById("recent");
-const searchBoxEl = () => document.getElementById("searchBox");
-const callFromEl = () => document.getElementById("callFrom");
-const incomingEl = () => document.getElementById("incoming");
 </script>
+
 </body>
 </html>
