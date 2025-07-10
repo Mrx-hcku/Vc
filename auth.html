@@ -1,101 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Login - Vcall</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
-    body {
-      background: #111;
-      color: white;
-      font-family: sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
+    * {
+      box-sizing: border-box;
     }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom right, #0a84ff, #002b5c);
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
     .auth-box {
       width: 90%;
-      max-width: 320px;
+      max-width: 340px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 24px;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
       text-align: center;
+      backdrop-filter: blur(8px);
     }
-    input, button {
+
+    .auth-box h2 {
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    input[type="email"],
+    input[type="password"] {
       width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border-radius: 8px;
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 10px;
       border: none;
       font-size: 16px;
     }
-    button {
-      background: #0a84ff;
-      color: white;
-      font-weight: bold;
+
+    input[type="checkbox"] {
+      transform: scale(1.1);
+      margin-right: 6px;
     }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      background: #ffffff;
+      color: #0a84ff;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #e0e0e0;
+    }
+
     label {
+      display: flex;
+      align-items: center;
+      justify-content: start;
       font-size: 14px;
+      margin-top: 6px;
+    }
+
+    #authMsg {
+      font-size: 14px;
+      color: #ff8080;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
 
-<div class="auth-box">
-  <h2>Vcall Login</h2>
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Password">
-  <label><input type="checkbox" id="keepLogged"> Keep me logged in</label>
-  <button onclick="login()">Login</button>
-  <button onclick="signup()">Sign Up</button>
-  <p id="authMsg" style="color:red"></p>
-</div>
+  <div class="auth-box">
+    <h2>Welcome to Vcall</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <label><input type="checkbox" id="keepLogged" /> Keep me logged in</label>
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Sign Up</button>
+    <p id="authMsg"></p>
+  </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
-    authDomain: "vcall-5f220.firebaseapp.com",
-    projectId: "vcall-5f220",
-    appId: "1:679349443110:web:b44818bb14dffafcec24e7"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDxTN6oRxNKUAJ0eVUZucumAALeBBG72hk",
+      authDomain: "vcall-5f220.firebaseapp.com",
+      projectId: "vcall-5f220",
+      appId: "1:679349443110:web:b44818bb14dffafcec24e7"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-  window.onload = () => {
-    if (localStorage.getItem("loggedIn") === "true") {
-      auth.onAuthStateChanged(user => {
-        if (user) window.location.href = "index.html";
+    window.onload = () => {
+      if (localStorage.getItem("loggedIn") === "true") {
+        auth.onAuthStateChanged(user => {
+          if (user) window.location.href = "index.html";
+        });
+      }
+    };
+
+    function login() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      auth.signInWithEmailAndPassword(email, pass).then(res => {
+        if (document.getElementById("keepLogged").checked) {
+          localStorage.setItem("loggedIn", "true");
+        }
+        window.location.href = "index.html";
+      }).catch(e => {
+        document.getElementById("authMsg").innerText = e.message;
       });
     }
-  };
 
-  function login() {
-    const email = document.getElementById("email").value;
-    const pass = document.getElementById("password").value;
-    auth.signInWithEmailAndPassword(email, pass).then(res => {
-      if (document.getElementById("keepLogged").checked) {
-        localStorage.setItem("loggedIn", "true");
-      }
-      window.location.href = "index.html";
-    }).catch(e => {
-      document.getElementById("authMsg").innerText = e.message;
-    });
-  }
-
-  function signup() {
-    const email = document.getElementById("email").value;
-    const pass = document.getElementById("password").value;
-    auth.createUserWithEmailAndPassword(email, pass).then(res => {
-      if (document.getElementById("keepLogged").checked) {
-        localStorage.setItem("loggedIn", "true");
-      }
-      window.location.href = "index.html";
-    }).catch(e => {
-      document.getElementById("authMsg").innerText = e.message;
-    });
-  }
-</script>
+    function signup() {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      auth.createUserWithEmailAndPassword(email, pass).then(res => {
+        if (document.getElementById("keepLogged").checked) {
+          localStorage.setItem("loggedIn", "true");
+        }
+        window.location.href = "index.html";
+      }).catch(e => {
+        document.getElementById("authMsg").innerText = e.message;
+      });
+    }
+  </script>
 
 </body>
 </html>
