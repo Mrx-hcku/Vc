@@ -3,6 +3,10 @@
 <head>
   <title>Vcall</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  <!-- Font Awesome for better icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
   <style>
     * {
       box-sizing: border-box;
@@ -146,11 +150,12 @@
       display: block;
     }
 
+    /* ✅ Modern Bottom Navigation */
     #bottomNav {
       display: flex;
       justify-content: space-around;
       background: #111;
-      padding: 10px 0;
+      padding: 12px 0 6px;
       border-top: 1px solid #222;
     }
 
@@ -158,8 +163,16 @@
       flex: 1;
       background: none;
       border: none;
-      color: #aaa;
-      font-size: 18px;
+      color: #888;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #bottomNav button i {
+      font-size: 20px;
     }
 
     #bottomNav button.active {
@@ -239,12 +252,23 @@
   <audio id="ringtone" src="https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg" loop></audio>
 </main>
 
+<!-- ✅ Bottom Navigation with Icons -->
 <div id="bottomNav">
-  <button class="active" onclick="showTab('homeTab', this)">🏠</button>
-  <button onclick="showTab('callsTab', this)">📞</button>
-  <button onclick="showTab('profileTab', this)">👤</button>
+  <button class="active" onclick="showTab('homeTab', this)">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+  </button>
+  <button onclick="showTab('callsTab', this)">
+    <i class="fas fa-phone-alt"></i>
+    <span>Calls</span>
+  </button>
+  <button onclick="showTab('profileTab', this)">
+    <i class="fas fa-user"></i>
+    <span>Profile</span>
+  </button>
 </div>
 
+<!-- Firebase & PeerJS -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -346,7 +370,7 @@ function loadRecent() {
         <img src="https://ui-avatars.com/api/?name=${name}">
         <div>${name}</div>
       </div>
-      <button onclick="startCall('${name}')">📞</button>`;
+      <button onclick="startCall('${name}')"><i class="fas fa-video"></i></button>`;
       container.appendChild(div);
     });
   });
@@ -423,4 +447,4 @@ function showTab(id, btn) {
 </script>
 
 </body>
-</html>
+      </html>
