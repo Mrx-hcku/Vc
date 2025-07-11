@@ -4,11 +4,7 @@
   <title>Call - VCall</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #000;
       overflow: hidden;
@@ -27,6 +23,25 @@
       top: 16px;
       z-index: 2;
       border-radius: 12px;
+    }
+    #callingText {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+      z-index: 10;
+      animation: pulse 1.5s infinite;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 10px 20px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+    }
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
     }
     #switchCamera {
       position: absolute;
@@ -51,25 +66,6 @@
     }
     #switchCamera:hover {
       background: rgba(255, 255, 255, 0.2);
-    }
-    #callingText {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: white;
-      font-size: 24px;
-      z-index: 10;
-      animation: pulse 1.5s infinite;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 10px 20px;
-      border-radius: 12px;
-      backdrop-filter: blur(8px);
-    }
-    @keyframes pulse {
-      0% { opacity: 0.3; }
-      50% { opacity: 1; }
-      100% { opacity: 0.3; }
     }
     #controls {
       position: absolute;
@@ -122,24 +118,29 @@
 <video id="localVideo" autoplay muted playsinline></video>
 <video id="remoteVideo" autoplay playsinline></video>
 
+<!-- Switch Camera -->
 <button id="switchCamera" title="Switch Camera">
-  <svg viewBox="0 0 24 24"><path d="M20 4h-3.17l-1.84-2H9.01L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6c0-1.1-.9-2-2-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/></svg>
+  <svg viewBox="0 0 24 24">
+    <path d="M20 4h-3.17l-1.84-2H9.01L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6c0-1.1-.9-2-2-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/>
+  </svg>
 </button>
 
 <!-- Bottom controls -->
 <div id="controls">
   <div>
-    <!-- Speaker Button -->
+    <!-- Speaker -->
     <button class="btn" onclick="toggleSpeaker()" title="Speaker">
       <svg viewBox="0 0 24 24"><path d="M7 9v6h4l5 5V4l-5 5H7z"/></svg>
     </button>
 
-    <!-- Mute Button -->
+    <!-- Mute -->
     <button class="btn" onclick="toggleMute()" title="Mute">
-      <svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06A4.98 4.98 0 0016.5 12zM14 3.23v2.06c3.39.49 6 3.39 6 6.71s-2.61 6.22-6 6.71v2.06c4.45-.5 8-4.27 8-8.77s-3.55-8.27-8-8.77z"/></svg>
+      <svg viewBox="0 0 24 24">
+        <path d="M19 11c0 1.93-1.17 3.57-2.83 4.3l1.45 1.45C19.07 15.74 20 13.49 20 11h-1zm-7 8c1.73 0 3.29-.55 4.58-1.49L15 16.41A6.96 6.96 0 0112 17a7 7 0 01-7-7H4c0 2.49 1.02 4.74 2.67 6.34L3.41 20.59 4.83 22l18-18-1.41-1.41L16.76 6.6C16.9 6.38 17 6.14 17 6V4h-2v2c0 .28-.22.5-.5.5S14 6.28 14 6V4h-4v2c0 .28-.22.5-.5.5S9 6.28 9 6V4H7v2c0 .14.05.27.14.37L5.41 5.59 4 7l6 6v1c0 .55.45 1 1 1s1-.45 1-1v-1.17l6.31 6.31C15.3 19.47 13.72 20 12 20z"/>
+      </svg>
     </button>
 
-    <!-- End Call Button -->
+    <!-- End Call -->
     <button class="btn end" onclick="endCall()" title="End Call">
       <svg viewBox="0 0 24 24"><path d="M21 7.5l-5.5 5.5 5.5 5.5-1.5 1.5-5.5-5.5-5.5 5.5-1.5-1.5 5.5-5.5-5.5-5.5L9 6l5.5 5.5L20 6z"/></svg>
     </button>
@@ -147,101 +148,107 @@
 </div>
 
 <script>
-  let localStream = null, remoteStream = null, currentCall = null;
-  let isMuted = false, speakerEnabled = true;
+let localStream = null, remoteStream = null, currentCall = null;
+let isMuted = false, speakerEnabled = true;
+let isUsingFrontCamera = false;
 
-  const localVideo = document.getElementById("localVideo");
-  const remoteVideo = document.getElementById("remoteVideo");
-  const callingText = document.getElementById("callingText");
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+const callingText = document.getElementById("callingText");
 
-  document.addEventListener("DOMContentLoaded", () => {
-    let tries = 0;
-    function tryInit() {
-      if (!window.opener || !window.opener.localStream || !window.opener.currentCall) {
-        if (tries++ < 10) return setTimeout(tryInit, 300);
-        alert("Video streams not available");
-        return;
-      }
+// Initial camera: back
+const getStream = (facing) => {
+  return navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { exact: facing } },
+    audio: true
+  });
+};
 
-      localStream = window.opener.localStream;
-      currentCall = window.opener.currentCall;
+document.addEventListener("DOMContentLoaded", () => {
+  let tries = 0;
+  function tryInit() {
+    if (!window.opener || !window.opener.currentCall) {
+      if (tries++ < 10) return setTimeout(tryInit, 300);
+      alert("Video streams not available");
+      return;
+    }
 
-      localVideo.srcObject = localStream;
-      localVideo.play();
+    currentCall = window.opener.currentCall;
+
+    getStream("environment").then(stream => {
+      localStream = stream;
+      localVideo.srcObject = stream;
+      window.opener.localStream = stream;
 
       if (window.opener.remoteStream) {
         remoteStream = window.opener.remoteStream;
         remoteVideo.srcObject = remoteStream;
-        remoteVideo.play();
         callingText.style.display = "none";
       } else {
         currentCall.on("stream", remote => {
           remoteStream = remote;
           remoteVideo.srcObject = remote;
-          remoteVideo.play();
           callingText.style.display = "none";
         });
       }
 
       toggleView(true);
-    }
-    tryInit();
-  });
-
-  localVideo.addEventListener("click", () => toggleView(true));
-  remoteVideo.addEventListener("click", () => toggleView(false));
-
-  function toggleView(showLocalFull) {
-    if (showLocalFull) {
-      localVideo.classList.remove("small");
-      remoteVideo.classList.add("small");
-    } else {
-      remoteVideo.classList.remove("small");
-      localVideo.classList.add("small");
-    }
-  }
-
-  function toggleMute() {
-    isMuted = !isMuted;
-    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-  }
-
-  function toggleSpeaker() {
-    speakerEnabled = !speakerEnabled;
-    remoteVideo.muted = !speakerEnabled;
-  }
-
-  function endCall() {
-    if (currentCall) currentCall.close();
-    if (localStream) localStream.getTracks().forEach(t => t.stop());
-    window.close();
-  }
-
-  document.getElementById("switchCamera").onclick = () => {
-    const videoTrack = localStream.getVideoTracks()[0];
-    if (!videoTrack) return;
-
-    navigator.mediaDevices.enumerateDevices().then(devices => {
-      const videoDevices = devices.filter(d => d.kind === "videoinput");
-      if (videoDevices.length < 2) return alert("Only one camera found");
-
-      const newDeviceId = videoDevices.find(d => d.deviceId !== videoTrack.getSettings().deviceId).deviceId;
-
-      navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: newDeviceId } },
-        audio: true
-      }).then(stream => {
-        const newVideoTrack = stream.getVideoTracks()[0];
-        currentCall.peerConnection.getSenders().forEach(sender => {
-          if (sender.track.kind === "video") sender.replaceTrack(newVideoTrack);
-        });
-
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = stream;
-        localVideo.srcObject = stream;
-      });
+    }).catch(err => {
+      alert("Camera access failed: " + err.message);
     });
-  };
+  }
+
+  tryInit();
+});
+
+localVideo.addEventListener("click", () => toggleView(true));
+remoteVideo.addEventListener("click", () => toggleView(false));
+
+function toggleView(showLocalFull) {
+  if (showLocalFull) {
+    localVideo.classList.remove("small");
+    remoteVideo.classList.add("small");
+  } else {
+    remoteVideo.classList.remove("small");
+    localVideo.classList.add("small");
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+}
+
+function toggleSpeaker() {
+  speakerEnabled = !speakerEnabled;
+  remoteVideo.muted = !speakerEnabled;
+}
+
+function endCall() {
+  if (currentCall) currentCall.close();
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  window.close();
+}
+
+// Switch front/back camera
+document.getElementById("switchCamera").onclick = () => {
+  isUsingFrontCamera = !isUsingFrontCamera;
+  const facingMode = isUsingFrontCamera ? "user" : "environment";
+
+  getStream(facingMode).then(stream => {
+    const newTrack = stream.getVideoTracks()[0];
+    const sender = currentCall.peerConnection.getSenders().find(s => s.track.kind === "video");
+
+    if (sender) sender.replaceTrack(newTrack);
+
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = stream;
+    localVideo.srcObject = stream;
+  }).catch(err => {
+    alert("Switch camera failed: " + err.message);
+  });
+};
 </script>
+
 </body>
-</html>
+  </html>
