@@ -1,50 +1,117 @@
-<!-- call.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <title>Call - VCall</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #000; overflow: hidden; font-family: sans-serif; }
-
-    #localVideo, #remoteVideo {
-      position: absolute; width: 100%; height: 100%; object-fit: cover;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    video {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     #remoteVideo.small, #localVideo.small {
-      width: 120px; height: 160px; right: 16px; top: 16px;
-      z-index: 2; border-radius: 12px;
+      width: 120px;
+      height: 160px;
+      right: 16px;
+      top: 16px;
+      z-index: 2;
+      border-radius: 12px;
     }
-
-    #controls {
-      position: absolute; bottom: 20px; width: 100%;
-      display: flex; justify-content: center; gap: 20px; z-index: 3;
-    }
-
-    .btn {
-      width: 60px; height: 60px; border-radius: 50%;
-      font-size: 22px; background: #222; color: white; border: none;
-    }
-    .btn.end { background: red; }
-
     #switchCamera {
-      position: absolute; top: 16px; left: 16px;
-      z-index: 3; background: rgba(255,255,255,0.2);
-      color: white; border: none; border-radius: 50%;
-      width: 44px; height: 44px; font-size: 20px;
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 3;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
     }
-
+    #switchCamera svg {
+      width: 22px;
+      height: 22px;
+      fill: white;
+    }
+    #switchCamera:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
     #callingText {
-      position: absolute; top: 50%; left: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
-      color: white; font-size: 24px; z-index: 10;
+      color: white;
+      font-size: 24px;
+      z-index: 10;
       animation: pulse 1.5s infinite;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 10px 20px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
     }
-
     @keyframes pulse {
       0% { opacity: 0.3; }
       50% { opacity: 1; }
       100% { opacity: 0.3; }
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      z-index: 3;
+    }
+    #controls > div {
+      display: flex;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 16px;
+      border-radius: 32px;
+      gap: 14px;
+      backdrop-filter: blur(10px);
+    }
+    .btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .btn svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+    }
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.1);
+    }
+    .btn.end {
+      background: #e53935;
+    }
+    .btn.end:hover {
+      background: #ff4e4e;
     }
   </style>
 </head>
@@ -55,110 +122,126 @@
 <video id="localVideo" autoplay muted playsinline></video>
 <video id="remoteVideo" autoplay playsinline></video>
 
-<button id="switchCamera">🔄</button>
+<button id="switchCamera" title="Switch Camera">
+  <svg viewBox="0 0 24 24"><path d="M20 4h-3.17l-1.84-2H9.01L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6c0-1.1-.9-2-2-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/></svg>
+</button>
 
+<!-- Bottom controls -->
 <div id="controls">
-  <button class="btn" onclick="toggleSpeaker()">🔊</button>
-  <button class="btn" onclick="toggleMute()">🔇</button>
-  <button class="btn end" onclick="endCall()">❌</button>
+  <div>
+    <!-- Speaker Button -->
+    <button class="btn" onclick="toggleSpeaker()" title="Speaker">
+      <svg viewBox="0 0 24 24"><path d="M7 9v6h4l5 5V4l-5 5H7z"/></svg>
+    </button>
+
+    <!-- Mute Button -->
+    <button class="btn" onclick="toggleMute()" title="Mute">
+      <svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06A4.98 4.98 0 0016.5 12zM14 3.23v2.06c3.39.49 6 3.39 6 6.71s-2.61 6.22-6 6.71v2.06c4.45-.5 8-4.27 8-8.77s-3.55-8.27-8-8.77z"/></svg>
+    </button>
+
+    <!-- End Call Button -->
+    <button class="btn end" onclick="endCall()" title="End Call">
+      <svg viewBox="0 0 24 24"><path d="M21 7.5l-5.5 5.5 5.5 5.5-1.5 1.5-5.5-5.5-5.5 5.5-1.5-1.5 5.5-5.5-5.5-5.5L9 6l5.5 5.5L20 6z"/></svg>
+    </button>
+  </div>
 </div>
 
 <script>
-let localStream = null, remoteStream = null, currentCall = null;
-let isMuted = false, speakerEnabled = true;
+  let localStream = null, remoteStream = null, currentCall = null;
+  let isMuted = false, speakerEnabled = true;
 
-const localVideo = document.getElementById("localVideo");
-const remoteVideo = document.getElementById("remoteVideo");
-const callingText = document.getElementById("callingText");
+  const localVideo = document.getElementById("localVideo");
+  const remoteVideo = document.getElementById("remoteVideo");
+  const callingText = document.getElementById("callingText");
 
-document.addEventListener("DOMContentLoaded", () => {
-  let tries = 0;
-  function tryInit() {
-    if (!window.opener || !window.opener.localStream || !window.opener.currentCall) {
-      if (tries++ < 10) return setTimeout(tryInit, 300);
-      alert("Video streams not available");
-      return;
-    }
+  document.addEventListener("DOMContentLoaded", () => {
+    let tries = 0;
+    function tryInit() {
+      if (!window.opener || !window.opener.localStream || !window.opener.currentCall) {
+        if (tries++ < 10) return setTimeout(tryInit, 300);
+        alert("Video streams not available");
+        return;
+      }
 
-    localStream = window.opener.localStream;
-    currentCall = window.opener.currentCall;
+      localStream = window.opener.localStream;
+      currentCall = window.opener.currentCall;
 
-    localVideo.srcObject = localStream;
-    localVideo.play();
+      localVideo.srcObject = localStream;
+      localVideo.play();
 
-    if (window.opener.remoteStream) {
-      remoteStream = window.opener.remoteStream;
-      remoteVideo.srcObject = remoteStream;
-      remoteVideo.play();
-      callingText.style.display = "none";
-    } else {
-      currentCall.on("stream", remote => {
-        remoteStream = remote;
-        remoteVideo.srcObject = remote;
+      if (window.opener.remoteStream) {
+        remoteStream = window.opener.remoteStream;
+        remoteVideo.srcObject = remoteStream;
         remoteVideo.play();
         callingText.style.display = "none";
-      });
+      } else {
+        currentCall.on("stream", remote => {
+          remoteStream = remote;
+          remoteVideo.srcObject = remote;
+          remoteVideo.play();
+          callingText.style.display = "none";
+        });
+      }
+
+      toggleView(true);
     }
-
-    toggleView(true);
-  }
-  tryInit();
-});
-
-localVideo.addEventListener("click", () => toggleView(true));
-remoteVideo.addEventListener("click", () => toggleView(false));
-
-function toggleView(showLocalFull) {
-  if (showLocalFull) {
-    localVideo.classList.remove("small");
-    remoteVideo.classList.add("small");
-  } else {
-    remoteVideo.classList.remove("small");
-    localVideo.classList.add("small");
-  }
-}
-
-function toggleMute() {
-  isMuted = !isMuted;
-  localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-}
-
-function toggleSpeaker() {
-  speakerEnabled = !speakerEnabled;
-  remoteVideo.muted = !speakerEnabled;
-}
-
-function endCall() {
-  if (currentCall) currentCall.close();
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  window.close();
-}
-
-document.getElementById("switchCamera").onclick = () => {
-  const videoTrack = localStream.getVideoTracks()[0];
-  if (!videoTrack) return;
-
-  navigator.mediaDevices.enumerateDevices().then(devices => {
-    const videoDevices = devices.filter(d => d.kind === "videoinput");
-    if (videoDevices.length < 2) return alert("Only one camera found");
-
-    const newDeviceId = videoDevices.find(d => d.deviceId !== videoTrack.getSettings().deviceId).deviceId;
-
-    navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: newDeviceId } },
-      audio: true
-    }).then(stream => {
-      const newVideoTrack = stream.getVideoTracks()[0];
-      currentCall.peerConnection.getSenders().forEach(sender => {
-        if (sender.track.kind === "video") sender.replaceTrack(newVideoTrack);
-      });
-
-      localStream.getTracks().forEach(t => t.stop());
-      localStream = stream;
-      localVideo.srcObject = stream;
-    });
+    tryInit();
   });
-};
+
+  localVideo.addEventListener("click", () => toggleView(true));
+  remoteVideo.addEventListener("click", () => toggleView(false));
+
+  function toggleView(showLocalFull) {
+    if (showLocalFull) {
+      localVideo.classList.remove("small");
+      remoteVideo.classList.add("small");
+    } else {
+      remoteVideo.classList.remove("small");
+      localVideo.classList.add("small");
+    }
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  }
+
+  function toggleSpeaker() {
+    speakerEnabled = !speakerEnabled;
+    remoteVideo.muted = !speakerEnabled;
+  }
+
+  function endCall() {
+    if (currentCall) currentCall.close();
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    window.close();
+  }
+
+  document.getElementById("switchCamera").onclick = () => {
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+      const videoDevices = devices.filter(d => d.kind === "videoinput");
+      if (videoDevices.length < 2) return alert("Only one camera found");
+
+      const newDeviceId = videoDevices.find(d => d.deviceId !== videoTrack.getSettings().deviceId).deviceId;
+
+      navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: newDeviceId } },
+        audio: true
+      }).then(stream => {
+        const newVideoTrack = stream.getVideoTracks()[0];
+        currentCall.peerConnection.getSenders().forEach(sender => {
+          if (sender.track.kind === "video") sender.replaceTrack(newVideoTrack);
+        });
+
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = stream;
+        localVideo.srcObject = stream;
+      });
+    });
+  };
 </script>
 </body>
 </html>
