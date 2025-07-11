@@ -147,7 +147,7 @@
 <script>
 let localStream = null, remoteStream = null, currentCall = null;
 let isMuted = false, speakerEnabled = true;
-let isUsingFrontCamera = false;
+let isUsingFrontCamera = true;
 
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     currentCall = window.opener.currentCall;
 
-    getStream("environment").then(stream => {
+    getStream("user").then(stream => {
       localStream = stream;
       localVideo.srcObject = stream;
       window.opener.localStream = stream;
